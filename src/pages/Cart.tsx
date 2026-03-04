@@ -45,21 +45,14 @@ export default function Cart() {
     return (sum % 10) === 0;
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#000000] flex flex-col items-center justify-center py-12 px-4 text-white selection:bg-[#CCFF00] selection:text-black">
-        <ShoppingBag className="h-20 w-20 text-gray-600 mb-6" />
-        <h2 className="text-3xl font-black font-display mb-3 uppercase tracking-wider text-center">Login to view your stash</h2>
-        <Link to="/login" className="text-[#CCFF00] hover:text-white font-bold text-lg underline decoration-2 underline-offset-4 transition-colors">
-          Sign In
-        </Link>
-      </div>
-    );
-  }
-
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckout = () => {
+    if (!user) {
+      toast.error('Please login to checkout');
+      navigate('/login');
+      return;
+    }
     setShowPaymentModal(true);
   };
 

@@ -57,7 +57,7 @@ export default function ProductDetails() {
     });
     window.dispatchEvent(event);
 
-    addToCart(product.id, quantity);
+    addToCart(product.id, quantity, product);
     setTimeout(() => setIsAdding(false), 600);
   };
 
