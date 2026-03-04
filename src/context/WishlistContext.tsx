@@ -23,7 +23,7 @@ const WishlistContext = createContext<WishlistContextType | undefined>(undefined
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const fetchWishlist = async () => {
     if (!user) {
@@ -32,7 +32,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const res = await fetch('/api/wishlist');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/wishlist', { headers });
       if (res.ok) {
         const data = await res.json();
         setWishlist(Array.isArray(data) ? data : []);
@@ -46,7 +50,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchWishlist();
-  }, [user]);
+  }, [user, token]);
 
   const addToWishlist = async (productId: string) => {
     if (!user) {
@@ -54,9 +58,15 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch('/api/wishlist', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ productId }),
       });
       if (res.ok) {
@@ -71,8 +81,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const removeFromWishlist = async (wishlistId: string) => {
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`/api/wishlist/${wishlistId}`, {
         method: 'DELETE',
+        headers
       });
       if (res.ok) {
         await fetchWishlist();

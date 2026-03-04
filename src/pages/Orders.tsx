@@ -7,11 +7,15 @@ import { motion } from 'motion/react';
 export default function Orders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   useEffect(() => {
     if (user) {
-      fetch('/api/orders')
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      fetch('/api/orders', { headers })
         .then((res) => res.json())
         .then((data) => {
           const formattedOrders = Array.isArray(data) ? data.map(order => ({

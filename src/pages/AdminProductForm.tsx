@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function AdminProductForm() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
 
@@ -31,7 +31,12 @@ export default function AdminProductForm() {
 
   useEffect(() => {
     if (isEditing) {
-      fetch(`/api/products/${id}`)
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      fetch(`/api/products/${id}`, { headers })
         .then((res) => {
           if (!res.ok) throw new Error('Product not found');
           return res.json();
@@ -208,9 +213,16 @@ export default function AdminProductForm() {
       const url = isEditing ? `/api/products/${id}` : '/api/products';
       const method = isEditing ? 'PUT' : 'POST';
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           name,
           description,

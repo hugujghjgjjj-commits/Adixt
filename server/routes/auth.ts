@@ -39,16 +39,20 @@ router.post('/register', async (req, res) => {
       }
 
       if (isValid) {
-        const token = jwt.sign({ id: existingUser.id, email: existingUser.email }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: existingUser.id, email: existingUser.email, isAdmin: existingUser.is_admin === 1 }, JWT_SECRET, { expiresIn: '7d' });
         
         res.cookie('token', token, {
           httpOnly: true,
           secure: true,
           sameSite: 'none',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
-        return res.status(200).json({ user: { id: existingUser.id, name: existingUser.name, email: existingUser.email, isAdmin: existingUser.is_admin === 1 } });
+        return res.status(200).json({ 
+          user: { id: existingUser.id, name: existingUser.name, email: existingUser.email, isAdmin: existingUser.is_admin === 1 },
+          token 
+        });
       } else {
         return res.status(400).json({ error: 'Email already exists. If this is you, please use the correct password to login.' });
       }
@@ -61,16 +65,20 @@ router.post('/register', async (req, res) => {
     db.prepare('INSERT INTO users (id, name, email, password, is_admin) VALUES (?, ?, ?, ?, ?)')
       .run(id, name, email, hashedPassword, isAdmin);
 
-    const token = jwt.sign({ id, email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id, email, isAdmin: isAdmin === 1 }, JWT_SECRET, { expiresIn: '7d' });
     
     res.cookie('token', token, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    res.status(201).json({ user: { id, name, email, isAdmin: isAdmin === 1 } });
+    res.status(201).json({ 
+      user: { id, name, email, isAdmin: isAdmin === 1 },
+      token
+    });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -130,10 +138,14 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    res.json({ user: { id: user.id, name: user.name, email: user.email, isAdmin: user.is_admin === 1 } });
+    res.json({ 
+      user: { id: user.id, name: user.name, email: user.email, isAdmin: user.is_admin === 1 },
+      token
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -151,7 +163,16 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', (req, res) => {
   try {
-    const token = req.cookies.token;
+    let token = req.cookies.token;
+    
+    // Fallback to Authorization header
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+
     if (!token) {
       return res.status(401).json({ error: 'Not authenticated' });
     }

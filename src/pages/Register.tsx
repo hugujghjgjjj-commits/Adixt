@@ -30,7 +30,7 @@ export default function Register() {
       
       if (res.ok) {
         localStorage.setItem('rememberedEmail', email);
-        login(data.user);
+        login(data.user, data.token);
         toast.success(`Welcome to the club, ${data.user.name.split(' ')[0]}!`);
         navigate('/');
       } else {

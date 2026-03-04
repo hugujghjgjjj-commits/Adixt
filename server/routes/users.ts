@@ -1,29 +1,8 @@
 import express from 'express';
-import { db } from '../db';
-import jwt from 'jsonwebtoken';
+import { db } from '../db.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-// Middleware to check if user is admin
-const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  try {
-    const token = req.cookies.token;
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(decoded.id) as any;
-
-    if (!user || user.is_admin !== 1) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    (req as any).user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ error: 'Unauthorized' });
-  }
-};
 
 // Get all users
 router.get('/', requireAdmin, (req, res) => {

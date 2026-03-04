@@ -26,7 +26,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const fetchCart = async () => {
     if (!user) {
@@ -46,7 +46,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      const res = await fetch('/api/cart');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/cart', { headers });
       if (res.ok) {
         const data = await res.json();
         setCart(Array.isArray(data) ? data : []);
@@ -61,7 +65,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Sync local cart to backend when user logs in
   useEffect(() => {
     const syncLocalCart = async () => {
-      if (user) {
+      if (user && token) {
         const localCart = localStorage.getItem('guest_cart');
         if (localCart) {
           try {
@@ -71,7 +75,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
               for (const item of parsedCart) {
                 await fetch('/api/cart', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
                   body: JSON.stringify({ productId: item.product_id, quantity: item.quantity }),
                 });
               }
@@ -83,13 +90,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         }
         fetchCart();
-      } else {
+      } else if (!user) {
         fetchCart();
       }
     };
 
     syncLocalCart();
-  }, [user]);
+  }, [user, token]);
 
   const addToCart = async (productId: string, quantity = 1, productDetails?: any) => {
     if (!user) {
@@ -122,9 +129,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ productId, quantity }),
       });
       if (res.ok) {
@@ -152,9 +165,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`/api/cart/${cartId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ quantity }),
       });
       if (res.ok) {
@@ -176,8 +195,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`/api/cart/${cartId}`, {
         method: 'DELETE',
+        headers
       });
       if (res.ok) {
         await fetchCart();

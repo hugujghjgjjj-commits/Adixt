@@ -6,7 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +17,12 @@ export default function Profile() {
       return;
     }
 
-    fetch('/api/orders')
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    fetch('/api/orders', { headers })
       .then((res) => res.json())
       .then((data) => {
         setOrders(Array.isArray(data) ? data : []);

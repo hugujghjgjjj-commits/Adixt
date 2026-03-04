@@ -6,17 +6,21 @@ import { Plus, Edit, Trash2, Users, Loader2, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [token]);
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch('/api/products');
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/products', { headers });
       if (res.ok) {
         const data = await res.json();
         setProducts(Array.isArray(data) ? data : []);
@@ -35,8 +39,13 @@ export default function AdminDashboard() {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
 
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`/api/products/${id}`, {
         method: 'DELETE',
+        headers
       });
 
       if (res.ok) {

@@ -1,10 +1,11 @@
 import express from 'express';
 import { db } from '../db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/', (req, res) => {
+router.post('/', requireAdmin, (req, res) => {
   try {
     const { name, description, price, original_price, discount_percentage, category, image_url, images } = req.body;
     
@@ -89,7 +90,7 @@ router.get('/:id', (req, res) => {
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', requireAdmin, (req, res) => {
   try {
     const { name, description, price, original_price, discount_percentage, category, image_url, images } = req.body;
     const { id } = req.params;
@@ -122,7 +123,7 @@ router.put('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const existingProduct = db.prepare('SELECT * FROM products WHERE id = ?').get(id);

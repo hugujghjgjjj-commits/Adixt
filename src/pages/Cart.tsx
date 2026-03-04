@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'shipping' | 'payment'>('shipping');
@@ -96,9 +96,16 @@ export default function Cart() {
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           paymentMethod, 
           shippingDetails 
