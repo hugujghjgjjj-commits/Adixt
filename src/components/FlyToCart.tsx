@@ -16,7 +16,7 @@ export default function FlyToCart() {
   useEffect(() => {
     const handleFly = (e: CustomEvent) => {
       const { x, y, imageUrl } = e.detail;
-      const id = Date.now();
+      const id = Date.now() + Math.random();
       
       // Get cart icon position
       const cartIcon = document.getElementById('cart-icon');

@@ -16,16 +16,16 @@ export default function Footer() {
               The ultimate destination for the latest heat. Curated streetwear, sneakers, and accessories for the culture.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-[#CCFF00] transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#CCFF00] transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-[#00FFFF] transition-colors">
+              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#00FFFF] transition-colors">
                 <Twitter className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-[#FF00FF] transition-colors">
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-[#FF00FF] transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-red-500 transition-colors">
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-red-500 transition-colors">
                 <Youtube className="h-5 w-5" />
               </a>
             </div>
@@ -44,19 +44,20 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-display font-black uppercase tracking-wider mb-6">Support</h3>
             <ul className="space-y-4">
-              <li><Link to="#" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">FAQ</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Shipping & Returns</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Size Guide</Link></li>
-              <li><Link to="#" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Contact Us</Link></li>
+              <li><Link to="/" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">FAQ</Link></li>
+              <li><Link to="/" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Shipping & Returns</Link></li>
+              <li><Link to="/" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Size Guide</Link></li>
+              <li><Link to="/" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Contact Us</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-white font-display font-black uppercase tracking-wider mb-6">Stay Updated</h3>
             <p className="text-gray-400 font-mono text-sm mb-4">Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.</p>
-            <form className="flex gap-2" onSubmit={(e) => e.preventDefault()}>
+            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); alert('Subscribed!'); }}>
               <input 
                 type="email" 
+                required
                 placeholder="Enter your email" 
                 className="bg-[#111] border border-white/10 rounded-lg px-4 py-2 text-white font-mono text-sm focus:outline-none focus:border-[#CCFF00] w-full"
               />
@@ -72,8 +73,8 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} ADIXT. All rights reserved. No cap.
           </p>
           <div className="flex gap-6">
-            <Link to="#" className="text-gray-500 hover:text-white font-mono text-xs transition-colors">Privacy Policy</Link>
-            <Link to="#" className="text-gray-500 hover:text-white font-mono text-xs transition-colors">Terms of Service</Link>
+            <Link to="/" className="text-gray-500 hover:text-white font-mono text-xs transition-colors">Privacy Policy</Link>
+            <Link to="/" className="text-gray-500 hover:text-white font-mono text-xs transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>
