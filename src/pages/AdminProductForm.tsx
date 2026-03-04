@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { storage, isFirebaseConfigured } from '../lib/firebase';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -155,30 +155,42 @@ export default function AdminProductForm() {
       setIsSubmitting(true);
       setError('');
 
-      // 1. Upload new images to Firebase Storage
+      // 1. Upload new images to Firebase Storage or convert to Base64
       const finalImages = await Promise.all(images.map(async (img) => {
         if (img.file) {
-          const storageRef = ref(storage, `products/${Date.now()}_${img.file.name}`);
-          const uploadTask = uploadBytesResumable(storageRef, img.file);
+          if (isFirebaseConfigured) {
+            const storageRef = ref(storage, `products/${Date.now()}_${img.file.name}`);
+            const uploadTask = uploadBytesResumable(storageRef, img.file);
 
-          const url = await new Promise<string>((resolve, reject) => {
-            uploadTask.on(
-              'state_changed',
-              (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setUploadProgress(progress);
-              },
-              (error) => {
-                console.error('Upload error:', error);
-                reject('Failed to upload image to Firebase');
-              },
-              async () => {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve(url);
-              }
-            );
-          });
-          return { ...img, url };
+            const url = await new Promise<string>((resolve, reject) => {
+              uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                  setUploadProgress(progress);
+                },
+                (error) => {
+                  console.error('Upload error:', error);
+                  reject('Failed to upload image to Firebase');
+                },
+                async () => {
+                  const url = await getDownloadURL(uploadTask.snapshot.ref);
+                  resolve(url);
+                }
+              );
+            });
+            return { ...img, url };
+          } else {
+            // Fallback: Convert to Base64
+            const url = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = () => reject('Failed to read file');
+              reader.readAsDataURL(img.file as Blob);
+            });
+            setUploadProgress(100); // Instant upload for base64
+            return { ...img, url };
+          }
         }
         return img;
       }));
@@ -251,7 +263,7 @@ export default function AdminProductForm() {
             {isEditing ? 'Edit Product' : 'Add New Product'}
           </h1>
           <p className="text-gray-400 font-mono">
-            {isEditing ? 'Update the details and change the images.' : 'Upload images to Firebase Storage and add heat to the store.'}
+            {isEditing ? 'Update the details and change the images.' : 'Upload images and add heat to the store.'}
           </p>
         </div>
 
@@ -265,7 +277,7 @@ export default function AdminProductForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Left Column - Image Upload */}
             <div className="space-y-4">
-              <label className="block text-sm font-bold font-mono text-gray-300 uppercase tracking-wider">Product Images (Firebase)</label>
+              <label className="block text-sm font-bold font-mono text-gray-300 uppercase tracking-wider">Product Images</label>
               
               <div className="grid grid-cols-2 gap-4 mb-4">
                 {images.map((img, index) => (

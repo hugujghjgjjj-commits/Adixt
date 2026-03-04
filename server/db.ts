@@ -26,6 +26,7 @@ export function initDb() {
       discount_percentage INTEGER,
       category TEXT NOT NULL,
       image_url TEXT,
+      images TEXT DEFAULT '[]',
       rating REAL DEFAULT 0,
       reviews_count INTEGER DEFAULT 0,
       colors_count INTEGER DEFAULT 1,
