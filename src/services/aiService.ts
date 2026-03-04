@@ -1,10 +1,22 @@
 import { GoogleGenAI, ThinkingLevel, Modality } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+let aiInstance: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("GEMINI_API_KEY is not set. AI features might fail.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey: apiKey || 'missing-key' });
+  }
+  return aiInstance;
+};
 
 export const aiService = {
   // 1. Thinking Mode (Complex)
   async askComplexQuestion(prompt: string) {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3.1-pro-preview",
       contents: prompt,
@@ -15,6 +27,7 @@ export const aiService = {
 
   // 2. Fast AI Responses (Simple)
   async askSimpleQuestion(prompt: string) {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-lite-preview",
       contents: prompt,
@@ -24,6 +37,7 @@ export const aiService = {
 
   // 3. Prompt based video generation
   async generateVideo(prompt: string) {
+    const ai = getAI();
     const operation = await ai.models.generateVideos({
       model: 'veo-3.1-fast-generate-preview',
       prompt: prompt,
@@ -38,6 +52,7 @@ export const aiService = {
 
   // 3.1 Poll for video completion
   async pollVideoOperation(operation: any) {
+    const ai = getAI();
     let currentOp = operation;
     while (!currentOp.done) {
       await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
@@ -48,6 +63,7 @@ export const aiService = {
 
   // 4. Google Maps Grounding
   async getMapsData(query: string, lat: number, lng: number) {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: query,
@@ -71,6 +87,7 @@ export const aiService = {
 
   // 5. Google Search Grounding
   async getSearchData(query: string) {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: query,
@@ -94,6 +111,7 @@ export const aiService = {
 
     // 2. Address Validation using Google Maps Grounding
     try {
+      const ai = getAI();
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: `Check if this address exists in reality: "${address}". If it exists, return "VALID". If it is fake or gibberish, return "INVALID".`,
