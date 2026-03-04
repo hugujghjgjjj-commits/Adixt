@@ -28,7 +28,16 @@ export default function AIHub() {
         setResult(res || '');
       } else if (task === 'video') {
         const op = await aiService.generateVideo(prompt);
-        setResult(`Video generation started. Operation ID: ${op.name}. It might take a few minutes to process.`);
+        setResult(`Video generation started. Please wait while we cook up your visual... This might take a minute.`);
+        
+        // Start polling
+        const videoUri = await aiService.pollVideoOperation(op);
+        if (videoUri) {
+          setResult(`Video generated successfully! \n\n[Download Video](${videoUri})`);
+          // We can also embed it if we want, but Markdown link is safe
+        } else {
+          setResult('Video generation failed or timed out.');
+        }
       } else if (task === 'search') {
         const res = await aiService.getSearchData(prompt);
         setResult(res.text || '');
@@ -151,7 +160,9 @@ export default function AIHub() {
               className="flex flex-col items-center justify-center py-12"
             >
               <Loader2 className="w-12 h-12 animate-spin text-[#CCFF00] mb-4" />
-              <p className="text-gray-400 font-mono animate-pulse">AI is cooking something special...</p>
+              <p className="text-gray-400 font-mono animate-pulse">
+                {activeTask === 'video' ? 'Cooking up your video... This might take a minute.' : 'AI is cooking something special...'}
+              </p>
             </motion.div>
           ) : result ? (
             <motion.div 

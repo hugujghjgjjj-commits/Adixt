@@ -36,6 +36,16 @@ export const aiService = {
     return operation;
   },
 
+  // 3.1 Poll for video completion
+  async pollVideoOperation(operation: any) {
+    let currentOp = operation;
+    while (!currentOp.done) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5 seconds
+      currentOp = await ai.operations.getVideosOperation({ operation: currentOp });
+    }
+    return currentOp.response?.generatedVideos?.[0]?.video?.uri;
+  },
+
   // 4. Google Maps Grounding
   async getMapsData(query: string, lat: number, lng: number) {
     const response = await ai.models.generateContent({
