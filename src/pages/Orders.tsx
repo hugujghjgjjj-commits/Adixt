@@ -1,0 +1,181 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Package, Clock, CheckCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { motion } from 'motion/react';
+
+export default function Orders() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/orders')
+        .then((res) => res.json())
+        .then((data) => {
+          const formattedOrders = Array.isArray(data) ? data.map(order => ({
+            ...order,
+            status: order.status === 'completed' ? 'Delivered' : 'Processing'
+          })) : [];
+          setOrders(formattedOrders);
+          setLoading(false);
+        })
+        .catch(() => {
+          setOrders([]);
+          setLoading(false);
+        });
+
+      // Mock real-time updates
+      const interval = setInterval(() => {
+        setOrders(prevOrders => prevOrders.map(order => {
+          if (order.status === 'Delivered') return order;
+          
+          const statuses = ['Processing', 'Shipped', 'Delivered'];
+          const currentIndex = statuses.indexOf(order.status);
+          if (currentIndex !== -1 && currentIndex < statuses.length - 1) {
+            return { ...order, status: statuses[currentIndex + 1] };
+          }
+          return order;
+        }));
+      }, 5000); // Update every 5 seconds
+
+      return () => clearInterval(interval);
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Helper to get status icon
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Processing': return <Clock className="w-4 h-4 mr-2" />;
+      case 'Shipped': return <Package className="w-4 h-4 mr-2" />;
+      case 'Delivered': return <CheckCircle className="w-4 h-4 mr-2" />;
+      default: return null;
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#000000] flex flex-col items-center justify-center py-12 px-4 text-white selection:bg-[#CCFF00] selection:text-black">
+        <Package className="h-20 w-20 text-gray-600 mb-6" />
+        <h2 className="text-3xl font-black font-display mb-3 uppercase tracking-wider text-center">Login to view your hauls</h2>
+        <Link to="/login" className="text-[#CCFF00] hover:text-white font-bold text-lg underline decoration-2 underline-offset-4 transition-colors">
+          Sign In
+        </Link>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          className="rounded-full h-12 w-12 border-b-2 border-white"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="min-h-screen bg-[#000000] py-12 text-white selection:bg-[#CCFF00] selection:text-black"
+    >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-5xl md:text-6xl font-black font-display mb-10 tracking-tighter uppercase">Your Hauls 📦</h1>
+
+        {orders.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-[#111] rounded-[2rem] p-16 text-center border-2 border-white/10 shadow-[8px_8px_0px_rgba(204,255,0,0.2)]"
+          >
+            <Package className="h-24 w-24 text-gray-600 mx-auto mb-6" />
+            <h2 className="text-3xl font-black font-display mb-4 uppercase">No hauls yet</h2>
+            <p className="text-gray-400 mb-10 font-mono text-lg">You haven't copped anything yet. Start shopping to build your stash.</p>
+            <Link 
+              to="/" 
+              className="inline-flex items-center px-8 py-4 border-2 border-[#CCFF00] text-lg font-black font-display rounded-full text-black bg-[#CCFF00] hover:bg-transparent hover:text-[#CCFF00] transition-all duration-300 uppercase tracking-wider shadow-[0_0_20px_rgba(204,255,0,0.3)]"
+            >
+              Start Shopping
+            </Link>
+          </motion.div>
+        ) : (
+          <div className="space-y-8">
+            {orders.map((order, index) => (
+              <motion.div 
+                key={order.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1, duration: 0.4 }}
+                className="bg-[#111] rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-[8px_8px_0px_rgba(255,255,255,0.05)] hover:shadow-[8px_8px_0px_rgba(204,255,0,0.2)] hover:border-[#CCFF00]/50 transition-all duration-300"
+              >
+                <div className="bg-[#000000] px-8 py-6 border-b-2 border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                  <div>
+                    <p className="text-xs font-mono font-bold text-gray-500 mb-2 uppercase tracking-widest">Order ID</p>
+                    <p className="font-mono text-base font-bold text-[#CCFF00]">{order.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-mono font-bold text-gray-500 mb-2 uppercase tracking-widest">Date</p>
+                    <p className="font-mono text-base font-bold text-white">{new Date(order.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-mono font-bold text-gray-500 mb-2 uppercase tracking-widest">Total</p>
+                    <p className="font-display font-black text-2xl text-white">₹{order.total_amount}</p>
+                  </div>
+                  <div>
+                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-black font-display uppercase tracking-wider border-2 ${
+                        order.status === 'Processing' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 
+                        order.status === 'Shipped' ? 'bg-blue-500/20 text-blue-400 border-blue-500/50' : 
+                        order.status === 'Delivered' ? 'bg-[#CCFF00]/20 text-[#CCFF00] border-[#CCFF00]/50' : 
+                        'bg-gray-500/20 text-gray-400 border-gray-500/50'
+                      }`}>
+                        {getStatusIcon(order.status)}
+                        {order.status}
+                      </span>
+                  </div>
+                </div>
+                
+                <div className="p-8">
+                  <ul className="divide-y-2 divide-white/10">
+                    {order.items.map((item: any) => (
+                      <li key={item.id} className="py-6 flex items-center gap-6 group">
+                        <Link to={`/product/${item.product_id}`} className="flex-shrink-0 w-24 h-24 bg-[#0a0a0a] rounded-xl border border-white/10 [perspective:800px]">
+                          <motion.img 
+                            whileHover={{ scale: 1.15, rotateX: 15, rotateY: -15, z: 30 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                            src={item.image_url} 
+                            alt={item.name} 
+                            className="w-full h-full object-cover rounded-xl shadow-xl"
+                            referrerPolicy="no-referrer"
+                          />
+                        </Link>
+                        <div className="flex-1">
+                          <Link to={`/product/${item.product_id}`}>
+                            <h4 className="text-lg font-display font-bold text-white group-hover:text-[#CCFF00] transition-colors leading-tight">
+                              {item.name}
+                            </h4>
+                          </Link>
+                          <p className="text-sm font-mono text-gray-400 mt-2">Qty: {item.quantity} × ₹{item.price}</p>
+                        </div>
+                        <div className="text-right font-display font-black text-xl text-white">
+                          ₹{item.quantity * item.price}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
