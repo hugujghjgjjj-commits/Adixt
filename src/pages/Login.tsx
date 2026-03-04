@@ -25,7 +25,12 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
       
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error('Server returned an invalid response');
+      }
       
       if (res.ok) {
         localStorage.setItem('rememberedEmail', email);
@@ -33,12 +38,14 @@ export default function Login() {
         toast.success(`Welcome back, ${data.user.name.split(' ')[0]}!`);
         navigate('/');
       } else {
-        setError(data.error || 'Login failed');
-        toast.error(data.error || 'Login failed');
+        const errorMsg = data.error || 'Login failed';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-      toast.error('An error occurred. Please try again.');
+    } catch (err: any) {
+      const errorMsg = err.message || 'An error occurred. Please try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

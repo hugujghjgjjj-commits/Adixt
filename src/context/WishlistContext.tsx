@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -25,7 +25,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { user, token } = useAuth();
 
-  const fetchWishlist = async () => {
+  const fetchWishlist = React.useCallback(async () => {
     if (!user) {
       setWishlist([]);
       setLoading(false);
@@ -46,11 +46,11 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, token]);
 
   useEffect(() => {
     fetchWishlist();
-  }, [user, token]);
+  }, [fetchWishlist]);
 
   const addToWishlist = async (productId: string) => {
     if (!user) {

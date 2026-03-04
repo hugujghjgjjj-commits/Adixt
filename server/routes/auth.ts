@@ -126,12 +126,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Incorrect password' });
     }
 
-    // Force admin for specific email if not already set
-    if (email === 'mkmznup12@gmail.com' && user.is_admin === 0) {
-      db.prepare('UPDATE users SET is_admin = 1 WHERE email = ?').run(user.email);
-      user.is_admin = 1;
-    }
-
     const token = jwt.sign({ id: user.id, email: user.email, isAdmin: user.is_admin === 1 }, JWT_SECRET, { expiresIn: '7d' });
     
     res.cookie('token', token, {

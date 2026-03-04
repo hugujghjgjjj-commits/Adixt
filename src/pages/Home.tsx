@@ -34,12 +34,16 @@ export default function Home() {
     if (search) query.append('search', search);
 
     fetch(`/api/products?${query.toString()}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch products');
+        return res.json();
+      })
       .then((data) => {
         setProducts(Array.isArray(data) ? data : []);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Products fetch error:', err);
         setProducts([]);
         setLoading(false);
       });
@@ -323,7 +327,7 @@ export default function Home() {
                       <span className="text-white font-bold">{product.rating}</span>
                       <span>({product.reviews_count})</span>
                       <span className="text-gray-600">|</span>
-                      <span>{product.bought_count}+ copped</span>
+                      <span>{product.bought_count > 999 ? `${(product.bought_count / 1000).toFixed(1)}k` : product.bought_count}+ copped</span>
                     </div>
                     
                     <div className="mt-auto flex items-end justify-between">

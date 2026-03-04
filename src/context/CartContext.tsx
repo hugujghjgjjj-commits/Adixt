@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
@@ -28,7 +28,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { user, token } = useAuth();
 
-  const fetchCart = async () => {
+  const fetchCart = React.useCallback(async () => {
     if (!user) {
       // Load from local storage
       const localCart = localStorage.getItem('guest_cart');
@@ -60,7 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, token]);
 
   // Sync local cart to backend when user logs in
   useEffect(() => {
@@ -96,7 +96,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     syncLocalCart();
-  }, [user, token]);
+  }, [user, token, fetchCart]);
 
   const addToCart = async (productId: string, quantity = 1, productDetails?: any) => {
     if (!user) {

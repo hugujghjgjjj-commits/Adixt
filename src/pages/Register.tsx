@@ -26,7 +26,12 @@ export default function Register() {
         body: JSON.stringify({ name, email, password }),
       });
       
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch (e) {
+        throw new Error('Server returned an invalid response');
+      }
       
       if (res.ok) {
         localStorage.setItem('rememberedEmail', email);
@@ -34,12 +39,14 @@ export default function Register() {
         toast.success(`Welcome to the club, ${data.user.name.split(' ')[0]}!`);
         navigate('/');
       } else {
-        setError(data.error || 'Registration failed');
-        toast.error(data.error || 'Registration failed');
+        const errorMsg = data.error || 'Registration failed';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-      toast.error('An error occurred. Please try again.');
+    } catch (err: any) {
+      const errorMsg = err.message || 'An error occurred. Please try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

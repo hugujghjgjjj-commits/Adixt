@@ -34,4 +34,29 @@ router.put('/:id/admin', requireAdmin, (req, res) => {
   }
 });
 
+// Transfer admin rights
+router.put('/:id/transfer-admin', requireAdmin, (req, res) => {
+  try {
+    const targetUserId = req.params.id;
+    const currentUserId = (req as any).user.id;
+
+    if (targetUserId === currentUserId) {
+      return res.status(400).json({ error: 'You are already an admin' });
+    }
+
+    const transaction = db.transaction(() => {
+      // Make target user admin
+      db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(targetUserId);
+      // Remove admin from current user
+      db.prepare('UPDATE users SET is_admin = 0 WHERE id = ?').run(currentUserId);
+    });
+
+    transaction();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to transfer admin:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

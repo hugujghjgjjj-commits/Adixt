@@ -21,6 +21,7 @@ import AdminUsers from './pages/AdminUsers';
 import Profile from './pages/Profile';
 import AIHub from './pages/AIHub';
 import FlyToCart from './components/FlyToCart';
+import ScrollToTop from './components/ScrollToTop';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -68,6 +69,7 @@ export default function App() {
         <WishlistProvider>
           <RecentlyViewedProvider>
             <Router>
+              <ScrollToTop />
               <div className="min-h-screen bg-[#000000] flex flex-col text-white selection:bg-[#CCFF00] selection:text-black">
                 <Toaster 
                   position="bottom-right"

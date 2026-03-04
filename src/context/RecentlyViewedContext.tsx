@@ -17,14 +17,14 @@ export function RecentlyViewedProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addToRecentlyViewed = (product: any) => {
+  const addToRecentlyViewed = React.useCallback((product: any) => {
     setRecentlyViewed(prev => {
       const filtered = prev.filter(p => p.id !== product.id);
       const updated = [product, ...filtered].slice(0, 5);
       localStorage.setItem('recently_viewed', JSON.stringify(updated));
       return updated;
     });
-  };
+  }, []);
 
   return (
     <RecentlyViewedContext.Provider value={{ recentlyViewed, addToRecentlyViewed }}>

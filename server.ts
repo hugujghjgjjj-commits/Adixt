@@ -3,7 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDb } from './server/db.js';
+import { initDb, db } from './server/db.js';
 import authRoutes from './server/routes/auth.js';
 import productRoutes from './server/routes/products.js';
 import cartRoutes from './server/routes/cart.js';
@@ -24,6 +24,20 @@ async function startServer() {
 
   // Initialize DB
   initDb();
+
+  app.get('/api/debug/db', (req, res) => {
+    try {
+      const products = db.prepare('SELECT COUNT(*) as count FROM products').get() as any;
+      const users = db.prepare('SELECT COUNT(*) as count FROM users').get() as any;
+      res.json({ 
+        products: products.count, 
+        users: users.count,
+        dbPath: path.join(__dirname, '..', 'database.sqlite')
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // API Routes
   app.use('/api/auth', authRoutes);

@@ -75,6 +75,42 @@ export default function AdminUsers() {
     }
   };
 
+  const transferAdmin = async (userId: string) => {
+    if (userId === user?.id) {
+      toast.error('You are already an admin');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to transfer your admin rights? You will lose your admin access immediately.')) {
+      return;
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`/api/users/${userId}/transfer-admin`, {
+        method: 'PUT',
+        headers,
+      });
+
+      if (res.ok) {
+        toast.success('Admin rights transferred successfully');
+        // Reload the page to reflect the loss of admin rights
+        window.location.href = '/';
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to transfer admin rights');
+      }
+    } catch (error) {
+      console.error('Error transferring admin rights:', error);
+      toast.error('An error occurred while transferring admin rights');
+    }
+  };
+
   if (!user?.isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
@@ -149,19 +185,31 @@ export default function AdminUsers() {
                       )}
                     </td>
                     <td className="p-6 text-right">
-                      <button
-                        onClick={() => toggleAdminStatus(u.id, u.is_admin)}
-                        disabled={u.id === user.id}
-                        className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
-                          u.id === user.id 
-                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                            : u.is_admin === 1
-                              ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
-                              : 'bg-[#CCFF00]/10 text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black border border-[#CCFF00]/20'
-                        }`}
-                      >
-                        {u.is_admin === 1 ? 'Revoke Admin' : 'Make Admin'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => toggleAdminStatus(u.id, u.is_admin)}
+                          disabled={u.id === user.id}
+                          className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+                            u.id === user.id 
+                              ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                              : u.is_admin === 1
+                                ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
+                                : 'bg-[#CCFF00]/10 text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black border border-[#CCFF00]/20'
+                          }`}
+                        >
+                          {u.is_admin === 1 ? 'Revoke Admin' : 'Make Admin'}
+                        </button>
+                        
+                        {u.id !== user.id && (
+                          <button
+                            onClick={() => transferAdmin(u.id)}
+                            className="px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white border border-purple-500/20"
+                            title="Transfer your admin rights to this user"
+                          >
+                            Transfer Admin
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
