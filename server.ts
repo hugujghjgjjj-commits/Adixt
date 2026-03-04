@@ -1,8 +1,6 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import cookieParser from 'cookie-parser';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { initDb } from './server/db.js';
 import authRoutes from './server/routes/auth.js';
 import productRoutes from './server/routes/products.js';
@@ -10,9 +8,6 @@ import cartRoutes from './server/routes/cart.js';
 import orderRoutes from './server/routes/orders.js';
 import wishlistRoutes from './server/routes/wishlist.js';
 import usersRoutes from './server/routes/users.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -45,10 +40,6 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static('dist'));
-    // SPA Fallback
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-    });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
