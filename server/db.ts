@@ -1,9 +1,26 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, '..', 'database.sqlite');
+let dbPath = path.join(__dirname, '..', 'database.sqlite');
+
+// Vercel Serverless Functions have a read-only filesystem except for /tmp
+if (process.env.VERCEL) {
+  dbPath = path.join('/tmp', 'database.sqlite');
+  
+  // If the database doesn't exist in /tmp yet, but we have a seeded one in the deployment, copy it
+  const initialDbPath = path.join(__dirname, '..', 'database.sqlite');
+  if (!fs.existsSync(dbPath) && fs.existsSync(initialDbPath)) {
+    try {
+      fs.copyFileSync(initialDbPath, dbPath);
+      console.log('[DB] Copied initial database to /tmp');
+    } catch (e) {
+      console.error('[DB] Failed to copy initial database to /tmp:', e);
+    }
+  }
+}
 
 export const db = new Database(dbPath);
 

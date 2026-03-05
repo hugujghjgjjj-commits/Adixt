@@ -1,56 +1,15 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { initDb, db } from './server/db.js';
-import authRoutes from './server/routes/auth.js';
-import productRoutes from './server/routes/products.js';
-import cartRoutes from './server/routes/cart.js';
-import orderRoutes from './server/routes/orders.js';
-import wishlistRoutes from './server/routes/wishlist.js';
-import usersRoutes from './server/routes/users.js';
+import app from './server/app.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const PORT = 3000;
+
 async function startServer() {
-  const app = express();
-  const PORT = 3000;
-
-  app.use(express.json({ limit: '100mb' }));
-  app.use(express.urlencoded({ limit: '100mb', extended: true }));
-  app.use(cookieParser());
-
-  // Initialize DB
-  initDb();
-
-  app.get('/api/debug/db', (req, res) => {
-    try {
-      const products = db.prepare('SELECT COUNT(*) as count FROM products').get() as any;
-      const users = db.prepare('SELECT COUNT(*) as count FROM users').get() as any;
-      res.json({ 
-        products: products.count, 
-        users: users.count,
-        dbPath: path.join(__dirname, '..', 'database.sqlite')
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // API Routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/products', productRoutes);
-  app.use('/api/cart', cartRoutes);
-  app.use('/api/orders', orderRoutes);
-  app.use('/api/wishlist', wishlistRoutes);
-  app.use('/api/users', usersRoutes);
-
-  app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
-  });
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
