@@ -163,36 +163,102 @@ export default function AdminProductForm() {
       // 1. Upload new images to Firebase Storage or convert to Base64
       const finalImages = await Promise.all(images.map(async (img) => {
         if (img.file) {
-          if (isFirebaseConfigured) {
-            const storageRef = ref(storage, `products/${Date.now()}_${img.file.name}`);
-            const uploadTask = uploadBytesResumable(storageRef, img.file);
-
-            const url = await new Promise<string>((resolve, reject) => {
-              uploadTask.on(
-                'state_changed',
-                (snapshot) => {
-                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                  setUploadProgress(progress);
-                },
-                (error) => {
-                  console.error('Upload error:', error);
-                  reject('Failed to upload image to Firebase');
-                },
-                async () => {
-                  const url = await getDownloadURL(uploadTask.snapshot.ref);
-                  resolve(url);
-                }
-              );
+          // Helper to compress and convert to Base64
+          const toBase64 = (file: File): Promise<string> => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  let width = img.width;
+                  let height = img.height;
+                  const maxDim = 800; // Resize to max 800px
+                  
+                  if (width > height) {
+                    if (width > maxDim) {
+                      height *= maxDim / width;
+                      width = maxDim;
+                    }
+                  } else {
+                    if (height > maxDim) {
+                      width *= maxDim / height;
+                      height = maxDim;
+                    }
+                  }
+                  
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return reject('No canvas context');
+                  ctx.drawImage(img, 0, 0, width, height);
+                  
+                  // Compress as JPEG with 0.7 quality
+                  resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = () => reject('Failed to load image');
+                img.src = e.target?.result as string;
+              };
+              reader.onerror = () => reject('Failed to read file');
+              reader.readAsDataURL(file);
             });
-            return { ...img, url };
+          };
+
+          if (isFirebaseConfigured) {
+            try {
+              const url = await new Promise<string>((resolve, reject) => {
+                const storageRef = ref(storage, `products/${Date.now()}_${img.file!.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, img.file!);
+
+                let isTimedOut = false;
+                // Add a timeout to prevent infinite hanging
+                const timeoutId = setTimeout(() => {
+                  if (uploadTask.snapshot.state === 'running') {
+                    isTimedOut = true;
+                    uploadTask.cancel();
+                  }
+                  reject('Upload timed out');
+                }, 15000); // Reduced to 15 seconds timeout
+
+                uploadTask.on(
+                  'state_changed',
+                  (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(progress);
+                  },
+                  (error) => {
+                    clearTimeout(timeoutId);
+                    // Ignore cancellation error if it was caused by our timeout
+                    if (error.code === 'storage/canceled' && isTimedOut) {
+                      console.warn('Upload canceled due to timeout');
+                      return;
+                    }
+                    console.error('Upload error:', error);
+                    reject('Failed to upload image to Firebase');
+                  },
+                  async () => {
+                    try {
+                      const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                      clearTimeout(timeoutId);
+                      resolve(downloadUrl);
+                    } catch (err) {
+                      clearTimeout(timeoutId);
+                      console.error('Get download URL error:', err);
+                      reject('Failed to get download URL');
+                    }
+                  }
+                );
+              });
+              return { ...img, url };
+            } catch (err) {
+              console.warn('Firebase upload failed, falling back to Base64:', err);
+              toast('Upload issue detected. Switching to offline mode for this image.', { icon: '⚠️' });
+              const base64Url = await toBase64(img.file);
+              return { ...img, url: base64Url };
+            }
           } else {
             // Fallback: Convert to Base64
-            const url = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = () => reject('Failed to read file');
-              reader.readAsDataURL(img.file as Blob);
-            });
+            const url = await toBase64(img.file);
             setUploadProgress(100); // Instant upload for base64
             return { ...img, url };
           }
@@ -220,31 +286,47 @@ export default function AdminProductForm() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify({
-          name,
-          description,
-          price: Number(price),
-          original_price: originalPrice ? Number(originalPrice) : null,
-          discount_percentage,
-          category,
-          image_url: mainImageUrl,
-          images: imageUrls
-        }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout for large payloads
 
-      if (res.ok) {
-        const savedProduct = await res.json();
-        toast.success(isEditing ? 'Product updated successfully!' : 'Product added successfully!');
-        navigate(`/product/${savedProduct.id}`);
-      } else {
-        const data = await res.json();
-        const errorMsg = data.error || `Failed to ${isEditing ? 'update' : 'create'} product`;
-        toast.error(errorMsg);
-        setError(errorMsg);
-        setIsSubmitting(false);
+      try {
+        const res = await fetch(url, {
+          method,
+          headers,
+          body: JSON.stringify({
+            name,
+            description,
+            price: Number(price),
+            original_price: originalPrice ? Number(originalPrice) : null,
+            discount_percentage,
+            category,
+            image_url: mainImageUrl,
+            images: imageUrls
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        console.log('Product save response status:', res.status);
+        const responseData = await res.json();
+        console.log('Product save response data:', responseData);
+
+        if (res.ok) {
+          toast.success(isEditing ? 'Product updated successfully!' : 'Product added successfully!');
+          navigate(`/product/${responseData.id}`);
+        } else {
+          const errorMsg = responseData.error || `Failed to ${isEditing ? 'update' : 'create'} product`;
+          toast.error(errorMsg);
+          setError(errorMsg);
+          setIsSubmitting(false);
+        }
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error('Request timed out');
+        }
+        throw err;
       }
     } catch (err) {
       console.error(err);

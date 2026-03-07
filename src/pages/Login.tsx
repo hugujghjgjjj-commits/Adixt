@@ -18,13 +18,19 @@ export default function Login() {
     setError('');
     setIsLoading(true);
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+
       let data;
       try {
         data = await res.json();
@@ -34,7 +40,7 @@ export default function Login() {
       
       if (res.ok) {
         localStorage.setItem('rememberedEmail', email);
-        login(data.user, data.token);
+        login(data.user);
         toast.success(`Welcome back, ${data.user.name.split(' ')[0]}!`);
         navigate('/');
       } else {
@@ -43,7 +49,11 @@ export default function Login() {
         toast.error(errorMsg);
       }
     } catch (err: any) {
-      const errorMsg = err.message || 'An error occurred. Please try again.';
+      clearTimeout(timeoutId);
+      let errorMsg = err.message || 'An error occurred. Please try again.';
+      if (err.name === 'AbortError') {
+        errorMsg = 'Request timed out. Please try again.';
+      }
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {

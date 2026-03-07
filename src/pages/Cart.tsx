@@ -20,14 +20,33 @@ export default function Cart() {
     address: '',
     city: '',
     postalCode: '',
-    phone: ''
+    phone: '',
+    countryCode: '+91'
   });
+  const [couponCode, setCouponCode] = useState('');
+  const [discount, setDiscount] = useState(0);
   const [cardDetails, setCardDetails] = useState({
     number: '',
     expiry: '',
     cvc: '',
     name: ''
   });
+
+  const applyCoupon = () => {
+    if (couponCode === 'ADIXT10') {
+      setDiscount(total * 0.1);
+      toast.success('Coupon applied! 10% off.');
+    } else if (couponCode === 'REFERRAL20') {
+      setDiscount(total * 0.2);
+      toast.success('Referral code applied! 20% off.');
+    } else {
+      toast.error('Invalid coupon code');
+      setDiscount(0);
+    }
+  };
+
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = subtotal - discount;
 
   const validateLuhn = (number: string) => {
     const sanitized = number.replace(/\s+/g, '');
@@ -37,15 +56,14 @@ export default function Cart() {
     for (let i = sanitized.length - 1; i >= 0; i--) {
       let digit = parseInt(sanitized.charAt(i));
       if (shouldDouble) {
-        if ((digit *= 2) > 9) digit -= 9;
+        digit *= 2;
+        if (digit > 9) digit -= 9;
       }
       sum += digit;
       shouldDouble = !shouldDouble;
     }
     return (sum % 10) === 0;
   };
-
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckout = () => {
     if (!user) {
@@ -103,21 +121,40 @@ export default function Cart() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ 
-          paymentMethod, 
-          shippingDetails 
-        }),
-      });
-      if (res.ok) {
-        setShowPaymentModal(false);
-        clearCart();
-        toast.success('Order placed successfully!');
-        navigate('/orders');
-      } else {
-        toast.error('Failed to place order');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ 
+            paymentMethod, 
+            shippingDetails,
+            couponCode
+          }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          setShowPaymentModal(false);
+          clearCart();
+          toast.success('Order placed successfully!');
+          navigate('/orders');
+        } else {
+          const data = await res.json();
+          toast.error(data.error || 'Failed to place order');
+          setIsProcessing(false);
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          toast.error('Request timed out. Please try again.');
+        } else {
+          throw fetchError;
+        }
         setIsProcessing(false);
       }
     } catch (error) {
@@ -135,7 +172,18 @@ export default function Cart() {
       className="min-h-screen bg-[#000000] py-12 text-white selection:bg-[#CCFF00] selection:text-black"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-5xl md:text-6xl font-black font-display mb-10 tracking-tighter uppercase">Your Stash 🛒</h1>
+        <div className="flex items-center justify-between mb-10">
+          <h1 className="text-5xl md:text-6xl font-black font-display tracking-tighter uppercase">Your Stash 🛒</h1>
+          {cart.length > 0 && (
+            <button
+              onClick={clearCart}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-full font-bold font-mono text-sm transition-all border border-red-500/20 hover:border-red-500 uppercase tracking-wider"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Cart
+            </button>
+          )}
+        </div>
 
         {cart.length === 0 ? (
           <motion.div 
@@ -241,10 +289,31 @@ export default function Cart() {
                 <h2 className="text-2xl font-black font-display text-white mb-8 uppercase tracking-wider">Order Summary</h2>
                 
                 <div className="space-y-5 mb-8">
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => setCouponCode(e.target.value)}
+                      placeholder="Enter coupon code"
+                      className="flex-1 bg-[#000000] border-2 border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#CCFF00] transition-colors font-mono"
+                    />
+                    <button
+                      onClick={applyCoupon}
+                      className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
                   <div className="flex justify-between text-gray-400 font-mono text-sm">
                     <span>Subtotal</span>
-                    <span className="text-white">₹{total}</span>
+                    <span className="text-white">₹{subtotal}</span>
                   </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-[#CCFF00] font-mono text-sm">
+                      <span>Discount</span>
+                      <span className="font-bold">-₹{discount}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-400 font-mono text-sm">
                     <span>Shipping</span>
                     <span className="text-[#CCFF00] font-bold">FREE AF</span>
@@ -362,14 +431,69 @@ export default function Cart() {
                     </div>
                     <div>
                       <label className="block text-xs font-mono font-bold text-gray-400 mb-2 uppercase tracking-widest">Phone Number</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={shippingDetails.countryCode}
+                        onChange={e => setShippingDetails({...shippingDetails, countryCode: e.target.value})}
+                        className="bg-[#000000] border-2 border-white/10 rounded-xl px-2 py-3 text-white focus:outline-none focus:border-[#CCFF00] transition-colors font-mono max-w-[100px]"
+                      >
+                        <option value="+91">+91 (IN)</option>
+                        <option value="+1">+1 (US)</option>
+                        <option value="+44">+44 (UK)</option>
+                        <option value="+61">+61 (AU)</option>
+                        <option value="+81">+81 (JP)</option>
+                        <option value="+49">+49 (DE)</option>
+                        <option value="+33">+33 (FR)</option>
+                        <option value="+39">+39 (IT)</option>
+                        <option value="+86">+86 (CN)</option>
+                        <option value="+7">+7 (RU)</option>
+                        <option value="+55">+55 (BR)</option>
+                        <option value="+971">+971 (AE)</option>
+                        <option value="+966">+966 (SA)</option>
+                        <option value="+65">+65 (SG)</option>
+                        <option value="+60">+60 (MY)</option>
+                        <option value="+62">+62 (ID)</option>
+                        <option value="+66">+66 (TH)</option>
+                        <option value="+84">+84 (VN)</option>
+                        <option value="+63">+63 (PH)</option>
+                        <option value="+92">+92 (PK)</option>
+                        <option value="+880">+880 (BD)</option>
+                        <option value="+94">+94 (LK)</option>
+                        <option value="+977">+977 (NP)</option>
+                        <option value="+20">+20 (EG)</option>
+                        <option value="+27">+27 (ZA)</option>
+                        <option value="+234">+234 (NG)</option>
+                        <option value="+254">+254 (KE)</option>
+                        <option value="+1">+1 (CA)</option>
+                        <option value="+52">+52 (MX)</option>
+                        <option value="+54">+54 (AR)</option>
+                        <option value="+56">+56 (CL)</option>
+                        <option value="+57">+57 (CO)</option>
+                        <option value="+51">+51 (PE)</option>
+                        <option value="+34">+34 (ES)</option>
+                        <option value="+31">+31 (NL)</option>
+                        <option value="+32">+32 (BE)</option>
+                        <option value="+41">+41 (CH)</option>
+                        <option value="+46">+46 (SE)</option>
+                        <option value="+47">+47 (NO)</option>
+                        <option value="+45">+45 (DK)</option>
+                        <option value="+358">+358 (FI)</option>
+                        <option value="+48">+48 (PL)</option>
+                        <option value="+90">+90 (TR)</option>
+                        <option value="+972">+972 (IL)</option>
+                        <option value="+82">+82 (KR)</option>
+                        <option value="+852">+852 (HK)</option>
+                        <option value="+886">+886 (TW)</option>
+                      </select>
                       <input 
                         type="tel" 
                         required
                         value={shippingDetails.phone}
                         onChange={e => setShippingDetails({...shippingDetails, phone: e.target.value})}
-                        placeholder="+1 (555) 000-0000" 
-                        className="w-full bg-[#000000] border-2 border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#CCFF00] focus:ring-1 focus:ring-[#CCFF00] transition-colors font-mono"
+                        placeholder="555-000-0000" 
+                        className="flex-1 bg-[#000000] border-2 border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#CCFF00] focus:ring-1 focus:ring-[#CCFF00] transition-colors font-mono"
                       />
+                    </div>
                     </div>
 
                     <motion.button 
@@ -398,6 +522,28 @@ export default function Cart() {
                     </div>
                     <h2 className="text-3xl font-black font-display text-white uppercase tracking-wider">Secure Checkout</h2>
                     <p className="text-gray-400 mt-3 font-mono">Total to pay: <span className="text-[#CCFF00] font-bold text-lg">₹{total}</span></p>
+                    
+                    <div className="mt-6 max-w-xs mx-auto">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={e => setCouponCode(e.target.value)}
+                          placeholder="Coupon/Referral Code"
+                          className="flex-1 bg-[#000000] border-2 border-white/10 rounded-xl px-3 py-2 text-white placeholder-gray-600 focus:outline-none focus:border-[#CCFF00] transition-colors font-mono text-sm uppercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={applyCoupon}
+                          className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl font-bold text-xs uppercase transition-colors border border-white/10"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      {discount > 0 && (
+                        <p className="text-[#CCFF00] text-xs font-mono mt-2">Discount applied: -₹{discount}</p>
+                      )}
+                    </div>
                   </div>
 
                   <form onSubmit={processPayment} className="space-y-5">

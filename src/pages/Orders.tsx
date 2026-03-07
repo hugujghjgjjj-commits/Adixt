@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Package, Clock, CheckCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Package, Clock, CheckCircle, Repeat } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { motion } from 'motion/react';
 
 export default function Orders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user, token } = useAuth();
+  const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
@@ -144,6 +147,18 @@ export default function Orders() {
                         {order.status}
                       </span>
                   </div>
+                  <button
+                    onClick={() => {
+                      order.items.forEach((item: any) => {
+                        addToCart(item.product_id, item.quantity, item);
+                      });
+                      navigate('/cart');
+                    }}
+                    className="p-2 bg-white/10 hover:bg-[#CCFF00] hover:text-black rounded-full transition-colors"
+                    title="Buy Again"
+                  >
+                    <Repeat className="w-5 h-5" />
+                  </button>
                 </div>
                 
                 <div className="p-8">

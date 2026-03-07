@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { Shield, ShieldAlert, Loader2, User as UserIcon } from 'lucide-react';
+import { Shield, Loader2, User as UserIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface UserData {
@@ -17,6 +17,7 @@ export default function AdminUsers() {
   const { user, token } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -24,11 +25,7 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch('/api/users', { headers });
+      const res = await fetch('/api/users');
       if (res.ok) {
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
@@ -49,18 +46,19 @@ export default function AdminUsers() {
       return;
     }
 
+    setProcessingId(userId);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       const res = await fetch(`/api/users/${userId}/admin`, {
         method: 'PUT',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isAdmin: currentStatus === 1 ? false : true }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         toast.success('User admin status updated');
@@ -69,45 +67,71 @@ export default function AdminUsers() {
         const data = await res.json();
         toast.error(data.error || 'Failed to update user');
       }
-    } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error('An error occurred while updating user');
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        toast.error('Request timed out');
+      } else {
+        console.error('Error updating user:', error);
+        toast.error('An error occurred while updating user');
+      }
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const transferAdmin = async (userId: string) => {
-    if (userId === user?.id) {
+    console.log('Initiating admin transfer to user:', userId);
+    
+    if (!user) {
+      toast.error('You must be logged in to perform this action');
+      return;
+    }
+
+    if (userId === user.id) {
       toast.error('You are already an admin');
       return;
     }
 
-    if (!window.confirm('Are you sure you want to transfer your admin rights? You will lose your admin access immediately.')) {
+    if (!window.confirm('CRITICAL WARNING: You are about to transfer your OWNER rights to this user. You will become a normal user and lose access to the admin panel immediately. This action cannot be undone. Are you sure?')) {
       return;
     }
 
+    setProcessingId(`transfer-${userId}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
       const res = await fetch(`/api/users/${userId}/transfer-admin`, {
         method: 'PUT',
-        headers,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
       if (res.ok) {
-        toast.success('Admin rights transferred successfully');
-        // Reload the page to reflect the loss of admin rights
-        window.location.href = '/';
+        toast.success('Admin rights transferred successfully. Redirecting...');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       } else {
         const data = await res.json();
+        console.error('Transfer failed:', data);
         toast.error(data.error || 'Failed to transfer admin rights');
+        setProcessingId(null);
       }
-    } catch (error) {
-      console.error('Error transferring admin rights:', error);
-      toast.error('An error occurred while transferring admin rights');
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        toast.error('Request timed out');
+      } else {
+        console.error('Error transferring admin rights:', error);
+        toast.error('An error occurred while transferring admin rights.');
+      }
+      setProcessingId(null);
     }
   };
 
@@ -144,7 +168,6 @@ export default function AdminUsers() {
                 <tr className="border-b-2 border-white/10 bg-black/50">
                   <th className="p-6 text-white font-display font-black uppercase tracking-wider text-sm">User</th>
                   <th className="p-6 text-white font-display font-black uppercase tracking-wider text-sm">Email</th>
-                  <th className="p-6 text-white font-display font-black uppercase tracking-wider text-sm">Joined</th>
                   <th className="p-6 text-white font-display font-black uppercase tracking-wider text-sm text-center">Role</th>
                   <th className="p-6 text-white font-display font-black uppercase tracking-wider text-sm text-right">Actions</th>
                 </tr>
@@ -170,9 +193,6 @@ export default function AdminUsers() {
                       </div>
                     </td>
                     <td className="p-6 text-gray-400 font-mono text-sm">{u.email}</td>
-                    <td className="p-6 text-gray-400 font-mono text-sm">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
                     <td className="p-6 text-center">
                       {u.is_admin === 1 ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#CCFF00]/10 text-[#CCFF00] border border-[#CCFF00]/20 text-xs font-mono uppercase tracking-widest">
@@ -188,25 +208,31 @@ export default function AdminUsers() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => toggleAdminStatus(u.id, u.is_admin)}
-                          disabled={u.id === user.id}
-                          className={`px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all ${
+                          disabled={u.id === user.id || !!processingId}
+                          className={`px-5 py-2.5 rounded-full font-mono text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
                             u.id === user.id 
-                              ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                              ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
                               : u.is_admin === 1
-                                ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
-                                : 'bg-[#CCFF00]/10 text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black border border-[#CCFF00]/20'
-                          }`}
+                                ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 hover:border-red-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                                : 'bg-[#CCFF00]/10 text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black border border-[#CCFF00]/20 hover:border-[#CCFF00] hover:shadow-[0_0_20px_rgba(204,255,0,0.3)]'
+                          } ${processingId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
+                          {processingId === u.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : null}
                           {u.is_admin === 1 ? 'Revoke Admin' : 'Make Admin'}
                         </button>
                         
                         {u.id !== user.id && (
                           <button
                             onClick={() => transferAdmin(u.id)}
-                            className="px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white border border-purple-500/20"
-                            title="Transfer your admin rights to this user"
+                            disabled={!!processingId}
+                            className={`px-5 py-2.5 rounded-full font-mono text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white border border-purple-500/20 hover:border-purple-500 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)] ${processingId ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
-                            Transfer Admin
+                            {processingId === `transfer-${u.id}` ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : null}
+                            Make Owner
                           </button>
                         )}
                       </div>

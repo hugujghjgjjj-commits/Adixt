@@ -41,17 +41,30 @@ router.post('/', (req: AuthRequest, res) => {
       WHERE c.user_id = ?
     `).all(userId) as any[];
 
+    const { shippingDetails, paymentMethod, couponCode } = req.body;
+
     if (cartItems.length === 0) {
       return res.status(400).json({ error: 'Cart is empty' });
     }
 
-    const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    let totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    let discountAmount = 0;
+
+    // Validate coupon code (simple check for now, can be expanded)
+    if (couponCode === 'ADIXT10') {
+      discountAmount = totalAmount * 0.1;
+      totalAmount -= discountAmount;
+    } else if (couponCode === 'REFERRAL20') {
+      discountAmount = totalAmount * 0.2;
+      totalAmount -= discountAmount;
+    }
+
     const orderId = uuidv4();
 
     const createOrder = db.transaction(() => {
       // Create order
-      db.prepare('INSERT INTO orders (id, user_id, total_amount, status) VALUES (?, ?, ?, ?)')
-        .run(orderId, userId, totalAmount, 'processing');
+      db.prepare('INSERT INTO orders (id, user_id, total_amount, status, shipping_details, payment_method, coupon_code, discount_amount) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(orderId, userId, totalAmount, 'processing', JSON.stringify(shippingDetails), paymentMethod, couponCode, discountAmount);
 
       // Create order items
       const insertItem = db.prepare('INSERT INTO order_items (id, order_id, product_id, quantity, price) VALUES (?, ?, ?, ?, ?)');

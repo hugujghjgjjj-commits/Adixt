@@ -78,4 +78,14 @@ router.delete('/:id', (req: AuthRequest, res) => {
   }
 });
 
+router.delete('/', (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    db.prepare('DELETE FROM cart WHERE user_id = ?').run(userId);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

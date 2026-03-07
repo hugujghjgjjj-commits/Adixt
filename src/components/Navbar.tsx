@@ -140,9 +140,6 @@ export default function Navbar() {
                 Admin
               </Link>
             )}
-            <Link to="/ai" className="hidden sm:block text-sm font-display font-bold text-gray-400 hover:text-[#CCFF00] transition-colors uppercase tracking-wider">
-              AI Hub
-            </Link>
             {user ? (
               <div className="hidden sm:block">
                 <Link to="/profile" className="text-sm font-mono font-bold text-[#CCFF00] hover:text-white transition-colors mr-4 uppercase tracking-wider">

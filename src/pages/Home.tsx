@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart, Heart, Star, Flame, Zap, Eye, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
@@ -11,6 +11,7 @@ export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [quickViewProduct, setQuickViewProduct] = useState<any | null>(null);
   const { addToCart } = useCart();
   const { addToWishlist, wishlist } = useWishlist();
@@ -469,6 +470,17 @@ export default function Home() {
                 </p>
                 
                 <div className="mt-auto flex gap-3">
+                  <button
+                    onClick={() => {
+                      addToCart(quickViewProduct.id, 1, quickViewProduct);
+                      setQuickViewProduct(null);
+                      navigate('/cart');
+                    }}
+                    className="flex-1 bg-white text-black font-display font-black py-4 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 uppercase tracking-wider"
+                  >
+                    <Zap className="w-5 h-5 fill-black" />
+                    BUY NOW
+                  </button>
                   <button 
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();

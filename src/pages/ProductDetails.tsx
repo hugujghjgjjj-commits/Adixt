@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Star, ArrowLeft, User, Flame, ZoomIn, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Heart, Star, ArrowLeft, User, Flame, ZoomIn, Edit, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
@@ -303,37 +303,52 @@ export default function ProductDetails() {
                     +
                   </button>
                 </div>
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleAddToCart}
-                  className="flex-1 bg-[#CCFF00] text-black px-8 py-5 rounded-2xl font-black font-display text-xl hover:bg-white transition-all flex items-center justify-center space-x-3 relative overflow-hidden uppercase tracking-wider shadow-[0_0_20px_rgba(204,255,0,0.3)]"
-                >
-                  <AnimatePresence mode="wait">
-                    {isAdding ? (
-                      <motion.div
-                        key="adding"
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -20, opacity: 0 }}
-                        className="flex items-center space-x-2"
-                      >
-                        <span>Added! 🔥</span>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="add"
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -20, opacity: 0 }}
-                        className="flex items-center space-x-3"
-                      >
-                        <ShoppingCart className="h-6 w-6" />
-                        <span>Add to Cart</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.button>
+                <div className="flex gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      addToCart(product.id, quantity, product);
+                      navigate('/cart');
+                    }}
+                    className="flex-1 bg-white text-black px-8 py-5 rounded-2xl font-black font-display text-xl hover:bg-gray-200 transition-all flex items-center justify-center space-x-3 relative overflow-hidden uppercase tracking-wider"
+                  >
+                    <Zap className="h-6 w-6 fill-black" />
+                    <span>Buy Now</span>
+                  </motion.button>
+
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleAddToCart}
+                    className="flex-1 bg-[#CCFF00] text-black px-8 py-5 rounded-2xl font-black font-display text-xl hover:bg-white transition-all flex items-center justify-center space-x-3 relative overflow-hidden uppercase tracking-wider shadow-[0_0_20px_rgba(204,255,0,0.3)]"
+                  >
+                    <AnimatePresence mode="wait">
+                      {isAdding ? (
+                        <motion.div
+                          key="adding"
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -20, opacity: 0 }}
+                          className="flex items-center space-x-2"
+                        >
+                          <span>Added! 🔥</span>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="add"
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -20, opacity: 0 }}
+                          className="flex items-center space-x-3"
+                        >
+                          <ShoppingCart className="h-6 w-6" />
+                          <span>Add to Cart</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </div>
               </div>
 
               {/* Features */}

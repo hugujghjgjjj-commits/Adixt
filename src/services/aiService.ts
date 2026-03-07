@@ -141,5 +141,36 @@ export const aiService = {
       console.error("Address validation error", e);
       return { isValid: true }; // Fallback to allow checkout if service fails
     }
+  },
+
+  // 7. Image Generation (Nano Banana 2)
+  async generateImage(prompt: string) {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-image-preview',
+      contents: {
+        parts: [
+          {
+            text: prompt,
+          },
+        ],
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1",
+          imageSize: "1K"
+        }
+      },
+    });
+
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          const base64EncodeString: string = part.inlineData.data;
+          return `data:image/png;base64,${base64EncodeString}`;
+        }
+      }
+    }
+    return null;
   }
 };

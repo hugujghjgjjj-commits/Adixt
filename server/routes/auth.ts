@@ -96,6 +96,7 @@ router.post('/login', async (req, res) => {
     password = password.trim();
 
     const user = db.prepare('SELECT * FROM users WHERE LOWER(email) = ?').get(email) as any;
+    console.log('[Auth] Login attempt for:', email, 'User found:', !!user);
     if (!user) {
       return res.status(401).json({ error: 'Account not found with this email' });
     }

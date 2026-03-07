@@ -18,7 +18,7 @@ interface CartContextType {
   updateQuantity: (cartId: string, quantity: number) => Promise<void>;
   removeFromCart: (cartId: string) => Promise<void>;
   fetchCart: () => Promise<void>;
-  clearCart: () => void;
+  clearCart: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -213,10 +213,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const clearCart = () => {
-    setCart([]);
+  const clearCart = async () => {
     if (!user) {
+      setCart([]);
       localStorage.removeItem('guest_cart');
+      return;
+    }
+
+    try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/cart', {
+        method: 'DELETE',
+        headers
+      });
+      if (res.ok) {
+        setCart([]);
+        toast.success('Cart cleared');
+      }
+    } catch (error) {
+      console.error('Failed to clear cart', error);
+      toast.error('Failed to clear cart');
     }
   };
 

@@ -19,7 +19,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminProductForm from './pages/AdminProductForm';
 import AdminUsers from './pages/AdminUsers';
 import Profile from './pages/Profile';
-import AIHub from './pages/AIHub';
 import FlyToCart from './components/FlyToCart';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -42,7 +41,6 @@ function AnimatedRoutes() {
         <Route path="/admin/users" element={<PageWrapper><AdminUsers /></PageWrapper>} />
         <Route path="/admin/product/new" element={<PageWrapper><AdminProductForm /></PageWrapper>} />
         <Route path="/admin/product/:id" element={<PageWrapper><AdminProductForm /></PageWrapper>} />
-        <Route path="/ai" element={<PageWrapper><AIHub /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );

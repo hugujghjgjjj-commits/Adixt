@@ -102,6 +102,30 @@ export function initDb() {
     // Column might already exist
   }
 
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN shipping_details TEXT");
+  } catch (e) {
+    // Column might already exist
+  }
+
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN payment_method TEXT");
+  } catch (e) {
+    // Column might already exist
+  }
+
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT");
+  } catch (e) {
+    // Column might already exist
+  }
+
+  try {
+    db.exec("ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0");
+  } catch (e) {
+    // Column might already exist
+  }
+
   // Seed products if empty
   const count = db.prepare('SELECT COUNT(*) as count FROM products').get() as { count: number };
   console.log(`[DB] Current product count: ${count.count}`);
