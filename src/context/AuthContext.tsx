@@ -33,6 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (userDoc.exists()) {
             const data = userDoc.data() as User;
+            // Force admin for the specific email
+            if (firebaseUser.email === 'mkmznup12@gmail.com' && data.role !== 'admin') {
+              data.role = 'admin';
+              try {
+                await setDoc(userDocRef, { ...data, role: 'admin' }, { merge: true });
+              } catch (e) {
+                console.error("Failed to update admin role", e);
+              }
+            }
             setUser({ ...data, isAdmin: data.role === 'admin' });
           } else {
             // Create user document if it doesn't exist

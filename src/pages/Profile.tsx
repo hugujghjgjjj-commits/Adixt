@@ -4,6 +4,8 @@ import { motion } from 'motion/react';
 import { User, Mail, Calendar, Package, Shield, LogOut, Key } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -17,21 +19,29 @@ export default function Profile() {
       return;
     }
 
-    const headers: Record<string, string> = {};
-    // if (token) {
-    //   headers['Authorization'] = `Bearer ${token}`;
-    // }
-
-    fetch('/api/orders', { headers })
-      .then((res) => res.json())
-      .then((data) => {
-        setOrders(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => {
+    const fetchOrders = async () => {
+      try {
+        const q = query(
+          collection(db, 'orders'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc'),
+          limit(3)
+        );
+        const querySnapshot = await getDocs(q);
+        const ordersData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setOrders(ordersData);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
         setOrders([]);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchOrders();
   }, [user, navigate]);
 
   const handleLogout = async () => {

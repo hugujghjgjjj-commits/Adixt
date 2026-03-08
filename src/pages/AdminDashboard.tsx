@@ -8,13 +8,9 @@ import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -32,6 +28,12 @@ export default function AdminDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (!authLoading && user?.isAdmin) {
+      fetchProducts();
+    }
+  }, [authLoading, user]);
+
   const deleteProduct = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
 
@@ -44,6 +46,14 @@ export default function AdminDashboard() {
       toast.error('An error occurred while deleting product');
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[60vh] flex justify-center items-center">
+        <Loader2 className="h-12 w-12 animate-spin text-[#CCFF00]" />
+      </div>
+    );
+  }
 
   if (!user?.isAdmin) {
     return (

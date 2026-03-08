@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { aiService } from '../services/aiService';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -114,47 +116,46 @@ export default function Cart() {
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      // if (token) {
-      //   headers['Authorization'] = `Bearer ${token}`;
-      // }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
       try {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ 
-            paymentMethod, 
-            shippingDetails,
-            couponCode
-          }),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
+        let totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        let discountAmount = 0;
 
-        if (res.ok) {
-          setShowPaymentModal(false);
-          clearCart();
-          toast.success('Order placed successfully!');
-          navigate('/orders');
-        } else {
-          const data = await res.json();
-          toast.error(data.error || 'Failed to place order');
-          setIsProcessing(false);
+        if (couponCode === 'ADIXT10') {
+          discountAmount = totalAmount * 0.1;
+          totalAmount -= discountAmount;
+        } else if (couponCode === 'REFERRAL20') {
+          discountAmount = totalAmount * 0.2;
+          totalAmount -= discountAmount;
         }
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
-          toast.error('Request timed out. Please try again.');
-        } else {
-          throw fetchError;
-        }
+
+        const orderData = {
+          userId: user.uid,
+          items: cart.map(item => ({
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            imageUrl: item.imageUrl
+          })),
+          total: totalAmount,
+          totalAmount: totalAmount, // Keeping both for compatibility with Orders.tsx
+          status: 'pending',
+          shippingDetails,
+          paymentMethod,
+          couponCode,
+          discountAmount,
+          createdAt: new Date().toISOString()
+        };
+
+        await addDoc(collection(db, 'orders'), orderData);
+        
+        setShowPaymentModal(false);
+        clearCart();
+        toast.success('Order placed successfully!');
+        navigate('/orders');
+      } catch (error: any) {
+        console.error('Failed to place order:', error);
+        toast.error('Failed to place order');
         setIsProcessing(false);
       }
     } catch (error) {

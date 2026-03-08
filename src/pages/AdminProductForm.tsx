@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { doc, getDoc, setDoc, updateDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, deleteField } from 'firebase/firestore';
 import { storage, db, isFirebaseConfigured } from '../lib/firebase';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function AdminProductForm() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
 
@@ -31,7 +31,7 @@ export default function AdminProductForm() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing && !authLoading && user?.isAdmin) {
       const fetchProduct = async () => {
         try {
           const docRef = doc(db, 'products', id!);
@@ -70,7 +70,15 @@ export default function AdminProductForm() {
       
       fetchProduct();
     }
-  }, [id, isEditing]);
+  }, [id, isEditing, authLoading, user]);
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#000000]">
+        <Loader2 className="h-12 w-12 animate-spin text-[#CCFF00]" />
+      </div>
+    );
+  }
 
   if (!user?.isAdmin) {
     return (
@@ -273,17 +281,26 @@ export default function AdminProductForm() {
       }
 
       // 3. Save or update product in database
-      const productData = {
+      const productData: any = {
         name,
         description,
         price: Number(price),
-        originalPrice: originalPrice ? Number(originalPrice) : null,
-        discountPercentage,
         category,
         imageUrl: mainImageUrl,
         images: imageUrls,
         stock: 100, // Default stock
       };
+
+      if (originalPrice && Number(originalPrice) > 0) {
+        productData.originalPrice = Number(originalPrice);
+      } else if (isEditing) {
+        productData.originalPrice = deleteField();
+      }
+      if (discountPercentage > 0) {
+        productData.discountPercentage = discountPercentage;
+      } else if (isEditing) {
+        productData.discountPercentage = deleteField();
+      }
 
       if (isEditing) {
         const docRef = doc(db, 'products', id!);
@@ -307,14 +324,6 @@ export default function AdminProductForm() {
       setIsSubmitting(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#000000]">
-        <Loader2 className="h-12 w-12 animate-spin text-[#CCFF00]" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

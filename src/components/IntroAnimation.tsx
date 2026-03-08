@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Text, Float, Stars, Sparkles, PerspectiveCamera, Environment } from '@react-three/drei';
+import { Text, Float, Stars, Sparkles, PerspectiveCamera } from '@react-three/drei';
 import { motion, AnimatePresence } from 'motion/react';
 import * as THREE from 'three';
 
@@ -50,7 +50,6 @@ function IntroContent({ onComplete }: { onComplete: () => void }) {
         <Text
           ref={textRef}
           fontSize={3.5}
-          font="/fonts/Inter-Black.woff" // Fallback to default if not found, but try to use a heavy font
           anchorX="center"
           anchorY="middle"
           outlineWidth={0.02}
@@ -85,9 +84,6 @@ function IntroContent({ onComplete }: { onComplete: () => void }) {
       <pointLight position={[10, 10, 10]} intensity={2} color="#00FFFF" />
       <pointLight position={[-10, -10, -10]} intensity={2} color="#CCFF00" />
       <spotLight position={[0, 10, 0]} intensity={1} angle={0.5} penumbra={1} color="#CCFF00" />
-      
-      {/* Environment Reflection */}
-      <Environment preset="city" />
     </group>
   );
 }
@@ -102,6 +98,11 @@ export default function IntroAnimation() {
       setShow(false);
     } else {
       setMounted(true);
+      // Fallback to ensure intro closes even if animation fails
+      const timer = setTimeout(() => {
+        handleComplete();
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, []);
 

@@ -136,9 +136,16 @@ export default function Navbar() {
           {/* Icons & Auth */}
           <div className="flex items-center space-x-4 sm:space-x-6">
             {user?.isAdmin && (
-              <Link to="/admin" className="hidden sm:block text-sm font-display font-bold text-gray-400 hover:text-[#CCFF00] transition-colors uppercase tracking-wider">
-                Admin
-              </Link>
+              <div className="hidden sm:block relative group">
+                <Link to="/admin" className="text-sm font-display font-bold text-gray-400 hover:text-[#CCFF00] transition-colors uppercase tracking-wider flex items-center gap-1">
+                  Admin
+                </Link>
+                <div className="absolute top-full right-0 mt-2 w-48 bg-[#111] border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden">
+                  <Link to="/admin" className="block px-4 py-3 text-sm font-mono text-gray-300 hover:bg-white/5 hover:text-[#CCFF00] transition-colors">Dashboard</Link>
+                  <Link to="/admin/product/new" className="block px-4 py-3 text-sm font-mono text-gray-300 hover:bg-white/5 hover:text-[#CCFF00] transition-colors">Add Product</Link>
+                  <Link to="/admin/users" className="block px-4 py-3 text-sm font-mono text-gray-300 hover:bg-white/5 hover:text-[#CCFF00] transition-colors">Manage Users</Link>
+                </div>
+              </div>
             )}
             {user ? (
               <div className="hidden sm:block">
@@ -256,7 +263,12 @@ export default function Navbar() {
                   <Link to="/orders" className="block py-3 px-2 font-display font-bold text-gray-300 hover:text-[#CCFF00] hover:bg-white/5 rounded-lg transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>Order status</Link>
                   <Link to="/wishlist" className="block py-3 px-2 font-display font-bold text-gray-300 hover:text-[#CCFF00] hover:bg-white/5 rounded-lg transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>Wishlist</Link>
                   {user?.isAdmin && (
-                    <Link to="/admin" className="block py-3 px-2 font-display font-bold text-gray-300 hover:text-[#CCFF00] hover:bg-white/5 rounded-lg transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>Admin Panel</Link>
+                    <div className="border-t border-white/10 pt-2 mt-2">
+                      <p className="px-2 text-xs font-mono text-gray-500 uppercase mb-1">Admin Controls</p>
+                      <Link to="/admin" className="block py-2 px-2 font-display font-bold text-gray-300 hover:text-[#CCFF00] hover:bg-white/5 rounded-lg transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>Dashboard</Link>
+                      <Link to="/admin/product/new" className="block py-2 px-2 font-display font-bold text-gray-300 hover:text-[#CCFF00] hover:bg-white/5 rounded-lg transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>Add Product</Link>
+                      <Link to="/admin/users" className="block py-2 px-2 font-display font-bold text-gray-300 hover:text-[#CCFF00] hover:bg-white/5 rounded-lg transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>Manage Users</Link>
+                    </div>
                   )}
                 </div>
               </div>

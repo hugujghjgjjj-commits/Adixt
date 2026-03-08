@@ -63,9 +63,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "mkmznup12@gmail.com" && request.auth.token.email_verified == true));
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         request.auth.token.email == "mkmznup12@gmail.com");
     }
 
     function hasRequiredFields(fields) {
@@ -83,7 +83,7 @@ service cloud.firestore {
 
     function isValidUrl(url) {
        return url is string &&
-         (url.matches("^https://.*") || url.matches("^http://.*"));
+         (url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
     }
 
     function isValidDateString(dateStr) {
@@ -111,11 +111,11 @@ service cloud.firestore {
       return hasRequiredFields(['name', 'description', 'price', 'imageUrl', 'category', 'stock', 'createdAt']) &&
              hasOnlyAllowedFields(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
-             data.description is string && data.description.size() > 0 && data.description.size() < 5000 &&
+             data.description is string && data.description.size() >= 0 && data.description.size() < 5000 &&
              data.price is number && data.price >= 0 &&
              (!('originalPrice' in data) || (data.originalPrice is number && data.originalPrice >= 0)) &&
              (!('discountPercentage' in data) || (data.discountPercentage is number && data.discountPercentage >= 0 && data.discountPercentage <= 100)) &&
-             isValidUrl(data.imageUrl) && data.imageUrl.size() < 1000 &&
+             isValidUrl(data.imageUrl) && data.imageUrl.size() < 5000000 &&
              (!('images' in data) || (data.images is list && data.images.size() <= 10)) &&
              data.category is string && data.category.size() > 0 && data.category.size() < 100 &&
              data.stock is number && data.stock >= 0 &&
@@ -134,13 +134,18 @@ service cloud.firestore {
     }
 
     function isValidOrder(data) {
-      let allowedFields = ['userId', 'items', 'total', 'status', 'createdAt'];
-      return hasRequiredFields(allowedFields) &&
+      let allowedFields = ['userId', 'items', 'total', 'totalAmount', 'status', 'createdAt', 'shippingDetails', 'paymentMethod', 'couponCode', 'discountAmount'];
+      return hasRequiredFields(['userId', 'items', 'total', 'status', 'createdAt']) &&
              hasOnlyAllowedFields(allowedFields) &&
              data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
              data.items is list && data.items.size() > 0 && data.items.size() <= 100 &&
              data.total is number && data.total >= 0 &&
+             (!('totalAmount' in data) || (data.totalAmount is number && data.totalAmount >= 0)) &&
              data.status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] &&
+             (!('shippingDetails' in data) || data.shippingDetails is map) &&
+             (!('paymentMethod' in data) || data.paymentMethod is string) &&
+             (!('couponCode' in data) || data.couponCode is string) &&
+             (!('discountAmount' in data) || data.discountAmount is number) &&
              isValidDateString(data.createdAt);
     }
 

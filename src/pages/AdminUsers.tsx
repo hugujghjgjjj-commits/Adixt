@@ -16,16 +16,10 @@ interface UserData {
 }
 
 export default function AdminUsers() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user?.isAdmin) {
-      fetchUsers();
-    }
-  }, [user]);
 
   const fetchUsers = async () => {
     try {
@@ -42,6 +36,12 @@ export default function AdminUsers() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!authLoading && user?.isAdmin) {
+      fetchUsers();
+    }
+  }, [authLoading, user]);
 
   const toggleAdminStatus = async (userId: string, currentRole: string) => {
     if (userId === user?.uid) {
@@ -68,6 +68,14 @@ export default function AdminUsers() {
       setProcessingId(null);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[60vh] flex justify-center items-center">
+        <Loader2 className="h-12 w-12 animate-spin text-[#CCFF00]" />
+      </div>
+    );
+  }
 
   if (!user?.isAdmin) {
     return (

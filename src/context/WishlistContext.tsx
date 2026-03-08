@@ -34,13 +34,27 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const q = query(collection(db, 'wishlist'), where('userId', '==', user.uid));
+      const q = query(collection(db, 'users', user.uid, 'wishlist'));
       const querySnapshot = await getDocs(q);
-      const wishlistData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as WishlistItem[];
-      setWishlist(wishlistData);
+      
+      const wishlistItems: WishlistItem[] = [];
+      for (const docSnapshot of querySnapshot.docs) {
+        const data = docSnapshot.data();
+        // Fetch product details
+        const productRef = doc(db, 'products', data.productId);
+        const productSnap = await getDoc(productRef);
+        if (productSnap.exists()) {
+          const productData = productSnap.data();
+          wishlistItems.push({
+            id: docSnapshot.id,
+            productId: data.productId,
+            name: productData.name,
+            price: productData.price,
+            imageUrl: productData.imageUrl
+          });
+        }
+      }
+      setWishlist(wishlistItems);
     } catch (error) {
       console.error('Failed to fetch wishlist', error);
     } finally {
@@ -60,8 +74,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     try {
       // Check if already in wishlist
       const q = query(
-        collection(db, 'wishlist'),
-        where('userId', '==', user.uid),
+        collection(db, 'users', user.uid, 'wishlist'),
         where('productId', '==', productId)
       );
       const querySnapshot = await getDocs(q);
@@ -71,21 +84,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Fetch product details to store in wishlist
-      const productDoc = await getDoc(doc(db, 'products', productId));
-      if (!productDoc.exists()) {
-        toast.error('Product not found');
-        return;
-      }
-      const productData = productDoc.data();
-
-      await addDoc(collection(db, 'wishlist'), {
-        userId: user.uid,
+      await addDoc(collection(db, 'users', user.uid, 'wishlist'), {
         productId,
-        name: productData.name,
-        price: productData.price,
-        imageUrl: productData.imageUrl || (productData.images && productData.images[0]) || '',
-        createdAt: new Date().toISOString()
+        addedAt: new Date().toISOString()
       });
 
       await fetchWishlist();
@@ -97,8 +98,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   };
 
   const removeFromWishlist = async (wishlistId: string) => {
+    if (!user) return;
     try {
-      await deleteDoc(doc(db, 'wishlist', wishlistId));
+      await deleteDoc(doc(db, 'users', user.uid, 'wishlist', wishlistId));
       await fetchWishlist();
       toast.success('Removed from wishlist');
     } catch (error) {

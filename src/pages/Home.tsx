@@ -142,9 +142,9 @@ export default function Home() {
               <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
                 <span className="text-sm font-mono text-[#CCFF00] font-bold uppercase tracking-wider text-3d-primary">New Arrivals ✦</span>
               </div>
-              <h1 className="text-6xl md:text-8xl font-black font-display tracking-tighter mb-6 leading-[0.85] uppercase glow-text text-3d">
+              <h1 className="text-6xl md:text-8xl font-black font-display tracking-tighter mb-6 leading-[0.85] uppercase text-white drop-shadow-[0_0_15px_rgba(204,255,0,0.5)]">
                 Cop The <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#CCFF00] to-[#00FFFF]">
+                <span className="text-[#CCFF00] drop-shadow-[0_0_25px_rgba(204,255,0,0.8)]">
                   Latest Heat
                 </span>
               </h1>

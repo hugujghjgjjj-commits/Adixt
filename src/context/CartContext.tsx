@@ -90,17 +90,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
             const parsedCart = JSON.parse(localCart) as CartItem[];
             if (parsedCart.length > 0) {
               const batch = writeBatch(db);
+              let hasValidItems = false;
               for (const item of parsedCart) {
-                const cartItemRef = doc(collection(db, 'users', user.uid, 'cart'));
-                batch.set(cartItemRef, {
-                  productId: item.productId,
-                  quantity: item.quantity,
-                  addedAt: new Date().toISOString()
-                });
+                if (item.productId) {
+                  const cartItemRef = doc(collection(db, 'users', user.uid, 'cart'));
+                  batch.set(cartItemRef, {
+                    productId: item.productId,
+                    quantity: item.quantity || 1,
+                    addedAt: new Date().toISOString()
+                  });
+                  hasValidItems = true;
+                }
               }
-              await batch.commit();
+              if (hasValidItems) {
+                await batch.commit();
+                toast.success('Guest cart synced with your account');
+              }
               localStorage.removeItem('guest_cart');
-              toast.success('Guest cart synced with your account');
             }
           } catch (e) {
             console.error('Failed to sync local cart', e);
