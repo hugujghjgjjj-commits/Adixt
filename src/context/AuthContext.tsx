@@ -1,18 +1,21 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
-interface User {
-  id: string;
+export interface User {
+  uid: string;
   name: string;
   email: string;
+  role: 'admin' | 'customer';
+  createdAt: string;
   isAdmin?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (user: User) => void;
-  logout: () => void;
-  token: string | null;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,33 +25,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) {
-          setUser(data.user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const data = userDoc.data() as User;
+            setUser({ ...data, isAdmin: data.role === 'admin' });
+          } else {
+            // Create user document if it doesn't exist
+            const newUser: User = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: firebaseUser.displayName || '',
+              role: 'customer',
+              createdAt: new Date().toISOString(),
+            };
+            // We don't save isAdmin to Firestore, it's derived from role
+            await setDoc(userDocRef, newUser);
+            setUser({ ...newUser, isAdmin: false });
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setUser(null);
         }
-      })
-      .catch((err) => {
-        console.error('Auth check failed:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (userData: User) => {
-    setUser(userData);
-  };
-
-  const logout = () => {
-    fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-      setUser(null);
-    });
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, token: null }}>
+    <AuthContext.Provider value={{ user, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

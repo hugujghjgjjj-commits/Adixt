@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { motion, AnimatePresence } from 'motion/react';
 import TiltCard from '../components/TiltCard';
+import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -24,24 +26,42 @@ export default function ProductDetails() {
   const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/products/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setProduct(data);
+    const fetchProductDetails = async () => {
+      setLoading(true);
+      try {
+        if (!id) return;
+        const docRef = doc(db, 'products', id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() } as any;
+          setProduct(data);
+          addToRecentlyViewed(data);
+
+          // Fetch recommended products from same category
+          const q = query(
+            collection(db, 'products'),
+            where('category', '==', data.category),
+            limit(5)
+          );
+          const recSnapshot = await getDocs(q);
+          const recData = recSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(p => p.id !== id)
+            .slice(0, 4);
+          setRecommendedProducts(recData);
+        } else {
+          setProduct({ error: true });
+        }
+      } catch (error) {
+        console.error("Error fetching product details:", error);
+        setProduct({ error: true });
+      } finally {
         setLoading(false);
-        addToRecentlyViewed(data);
-        
-        // Fetch recommended products from same category
-        fetch(`/api/products?category=${data.category}`)
-          .then(res => res.json())
-          .then(recData => {
-            setRecommendedProducts(Array.isArray(recData) ? recData.filter((p: any) => p.id !== id).slice(0, 4) : []);
-          });
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+      }
+    };
+
+    fetchProductDetails();
   }, [id, addToRecentlyViewed]);
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -52,7 +72,7 @@ export default function ProductDetails() {
       detail: {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
-        imageUrl: product.image_url
+        imageUrl: product.imageUrl
       }
     });
     window.dispatchEvent(event);
@@ -84,7 +104,7 @@ export default function ProductDetails() {
     );
   }
 
-  const isWishlisted = wishlist.some(w => w.product_id === product.id);
+  const isWishlisted = wishlist.some(w => w.productId === product.id);
 
   // Mock reviews data
   const mockReviews = [
@@ -97,13 +117,17 @@ export default function ProductDetails() {
   let images: string[] = [];
   if (product) {
     if (product.images) {
-      try {
-        images = JSON.parse(product.images);
-      } catch (e) {
-        images = [product.image_url];
+      if (Array.isArray(product.images)) {
+        images = product.images;
+      } else {
+        try {
+          images = JSON.parse(product.images);
+        } catch (e) {
+          images = [product.imageUrl];
+        }
       }
-    } else if (product.image_url) {
-      images = [product.image_url];
+    } else if (product.imageUrl) {
+      images = [product.imageUrl];
     }
   }
 
@@ -186,13 +210,13 @@ export default function ProductDetails() {
                     </div>
                   </div>
                   
-                  {product.discount_percentage > 0 && (
+                  {product.discountPercentage > 0 && (
                     <div className="absolute top-6 left-6 bg-[#FF00FF] text-white text-sm font-black font-mono px-4 py-2 rounded-full shadow-[0_0_15px_rgba(255,0,255,0.5)] border border-black transform -rotate-6 z-10 [transform:translateZ(50px)]">
-                      -{product.discount_percentage}%
+                      -{product.discountPercentage}%
                     </div>
                   )}
 
-                  {product.bought_count > 800 && (
+                  {product.boughtCount > 800 && (
                     <div className="absolute top-6 right-20 bg-red-600 text-white text-xs font-black font-display uppercase tracking-wider px-4 py-2 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)] border border-black transform rotate-3 z-10 [transform:translateZ(50px)]">
                       <Flame className="w-4 h-4" />
                       HOT AF
@@ -236,7 +260,7 @@ export default function ProductDetails() {
                 <span className="px-4 py-1.5 bg-white/10 text-white text-xs font-black font-mono uppercase tracking-widest rounded-full border border-white/20">
                   {product.category}
                 </span>
-                {product.is_wish_pick === 1 && (
+                {product.isWishPick && (
                   <span className="px-4 py-1.5 bg-[#CCFF00] text-black text-xs font-black font-mono uppercase tracking-widest rounded-full shadow-[0_0_10px_rgba(204,255,0,0.5)]">
                     ADIXT Pick 🌟
                   </span>
@@ -261,24 +285,24 @@ export default function ProductDetails() {
                   <span className="ml-2 text-white font-bold">{product.rating}</span>
                 </div>
                 <span className="mx-3 text-white/20">|</span>
-                <span className="uppercase tracking-wider">{product.reviews_count} reviews</span>
+                <span className="uppercase tracking-wider">{product.reviewsCount} reviews</span>
                 <span className="mx-3 text-white/20">|</span>
-                <span className="uppercase tracking-wider">{product.bought_count} copped</span>
+                <span className="uppercase tracking-wider">{product.boughtCount} copped</span>
               </div>
 
               <div className="flex items-end gap-4 mb-8">
                 <div className="text-5xl font-black font-display text-[#CCFF00]">
                   ₹{product.price}
                 </div>
-                {product.original_price && (
+                {product.originalPrice && (
                   <div className="text-2xl font-display font-bold text-gray-500 line-through mb-1 decoration-red-500 decoration-4">
-                    ₹{product.original_price}
+                    ₹{product.originalPrice}
                   </div>
                 )}
               </div>
 
               <div className="text-sm font-mono font-bold text-gray-400 mb-8 uppercase tracking-widest">
-                {product.colors_count} colors · {product.sizes_count} sizes
+                {product.colorsCount} colors · {product.sizesCount} sizes
               </div>
 
               <p className="text-gray-300 text-lg mb-10 leading-relaxed font-medium">
@@ -397,7 +421,7 @@ export default function ProductDetails() {
                   />
                 ))}
               </div>
-              <p className="text-gray-400 font-mono text-sm uppercase tracking-widest">Based on {product.reviews_count} reviews</p>
+              <p className="text-gray-400 font-mono text-sm uppercase tracking-widest">Based on {product.reviewsCount} reviews</p>
             </div>
           </div>
 

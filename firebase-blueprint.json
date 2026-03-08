@@ -1,0 +1,174 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's display name"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "customer"],
+          "description": "The user's role"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user was created"
+        }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "An e-commerce product",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The product's name"
+        },
+        "description": {
+          "type": "string",
+          "description": "The product's description"
+        },
+        "price": {
+          "type": "number",
+          "description": "The product's price"
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The product's image URL"
+        },
+        "category": {
+          "type": "string",
+          "description": "The product's category"
+        },
+        "stock": {
+          "type": "number",
+          "description": "The product's available stock"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the product was created"
+        }
+      },
+      "required": ["name", "description", "price", "imageUrl", "category", "stock", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A user's order",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who placed the order"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "number" },
+              "imageUrl": { "type": "string" }
+            },
+            "required": ["productId", "name", "price", "quantity", "imageUrl"]
+          },
+          "description": "The items in the order"
+        },
+        "total": {
+          "type": "number",
+          "description": "The total price of the order"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "processing", "shipped", "delivered", "cancelled"],
+          "description": "The status of the order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the order was placed"
+        }
+      },
+      "required": ["userId", "items", "total", "status", "createdAt"]
+    },
+    "CartItem": {
+      "title": "CartItem",
+      "description": "An item in a user's cart",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "The ID of the product"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the product in the cart"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the item was added to the cart"
+        }
+      },
+      "required": ["productId", "quantity", "addedAt"]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "An item in a user's wishlist",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "The ID of the product"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the item was added to the wishlist"
+        }
+      },
+      "required": ["productId", "addedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "E-commerce products"
+    },
+    "orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "User orders"
+    },
+    "users/{userId}/cart/{cartItemId}": {
+      "schema": { "$ref": "#/entities/CartItem" },
+      "description": "User's cart items"
+    },
+    "users/{userId}/wishlist/{wishlistItemId}": {
+      "schema": { "$ref": "#/entities/WishlistItem" },
+      "description": "User's wishlist items"
+    }
+  }
+}

@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface WishlistItem {
   id: string;
-  product_id: string;
+  productId: string;
   name: string;
   price: number;
-  image_url: string;
+  imageUrl: string;
 }
 
 interface WishlistContextType {
@@ -23,7 +25,7 @@ const WishlistContext = createContext<WishlistContextType | undefined>(undefined
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   const fetchWishlist = React.useCallback(async () => {
     if (!user) {
@@ -32,21 +34,19 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch('/api/wishlist', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setWishlist(Array.isArray(data) ? data : []);
-      }
+      const q = query(collection(db, 'wishlist'), where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      const wishlistData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as WishlistItem[];
+      setWishlist(wishlistData);
     } catch (error) {
       console.error('Failed to fetch wishlist', error);
     } finally {
       setLoading(false);
     }
-  }, [user, token]);
+  }, [user]);
 
   useEffect(() => {
     fetchWishlist();
@@ -58,21 +58,38 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      // Check if already in wishlist
+      const q = query(
+        collection(db, 'wishlist'),
+        where('userId', '==', user.uid),
+        where('productId', '==', productId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        toast('Item already in wishlist', { icon: 'ℹ️' });
+        return;
       }
-      const res = await fetch('/api/wishlist', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ productId }),
+
+      // Fetch product details to store in wishlist
+      const productDoc = await getDoc(doc(db, 'products', productId));
+      if (!productDoc.exists()) {
+        toast.error('Product not found');
+        return;
+      }
+      const productData = productDoc.data();
+
+      await addDoc(collection(db, 'wishlist'), {
+        userId: user.uid,
+        productId,
+        name: productData.name,
+        price: productData.price,
+        imageUrl: productData.imageUrl || (productData.images && productData.images[0]) || '',
+        createdAt: new Date().toISOString()
       });
-      if (res.ok) {
-        await fetchWishlist();
-        toast.success('Added to wishlist');
-      }
+
+      await fetchWishlist();
+      toast.success('Added to wishlist');
     } catch (error) {
       console.error('Failed to add to wishlist', error);
       toast.error('Failed to add to wishlist');
@@ -81,18 +98,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   const removeFromWishlist = async (wishlistId: string) => {
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch(`/api/wishlist/${wishlistId}`, {
-        method: 'DELETE',
-        headers
-      });
-      if (res.ok) {
-        await fetchWishlist();
-        toast.success('Removed from wishlist');
-      }
+      await deleteDoc(doc(db, 'wishlist', wishlistId));
+      await fetchWishlist();
+      toast.success('Removed from wishlist');
     } catch (error) {
       console.error('Failed to remove from wishlist', error);
       toast.error('Failed to remove from wishlist');

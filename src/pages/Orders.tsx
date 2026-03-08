@@ -4,50 +4,40 @@ import { Package, Clock, CheckCircle, Repeat } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { motion } from 'motion/react';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Orders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      fetch('/api/orders', { headers })
-        .then((res) => res.json())
-        .then((data) => {
-          const formattedOrders = Array.isArray(data) ? data.map(order => ({
-            ...order,
-            status: order.status === 'completed' ? 'Delivered' : 'Processing'
-          })) : [];
-          setOrders(formattedOrders);
-          setLoading(false);
-        })
-        .catch(() => {
+      const fetchOrders = async () => {
+        try {
+          const q = query(
+            collection(db, 'orders'),
+            where('userId', '==', user.uid),
+            orderBy('createdAt', 'desc')
+          );
+          const querySnapshot = await getDocs(q);
+          const ordersData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setOrders(ordersData);
+        } catch (error) {
+          console.error("Error fetching orders:", error);
           setOrders([]);
+        } finally {
           setLoading(false);
-        });
+        }
+      };
 
-      // Mock real-time updates
-      const interval = setInterval(() => {
-        setOrders(prevOrders => prevOrders.map(order => {
-          if (order.status === 'Delivered') return order;
-          
-          const statuses = ['Processing', 'Shipped', 'Delivered'];
-          const currentIndex = statuses.indexOf(order.status);
-          if (currentIndex !== -1 && currentIndex < statuses.length - 1) {
-            return { ...order, status: statuses[currentIndex + 1] };
-          }
-          return order;
-        }));
-      }, 5000); // Update every 5 seconds
-
-      return () => clearInterval(interval);
+      fetchOrders();
     } else {
       setLoading(false);
     }
@@ -130,11 +120,11 @@ export default function Orders() {
                   </div>
                   <div>
                     <p className="text-xs font-mono font-bold text-gray-500 mb-2 uppercase tracking-widest">Date</p>
-                    <p className="font-mono text-base font-bold text-white">{new Date(order.created_at).toLocaleDateString()}</p>
+                    <p className="font-mono text-base font-bold text-white">{new Date(order.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div>
                     <p className="text-xs font-mono font-bold text-gray-500 mb-2 uppercase tracking-widest">Total</p>
-                    <p className="font-display font-black text-2xl text-white">₹{order.total_amount}</p>
+                    <p className="font-display font-black text-2xl text-white">₹{order.totalAmount}</p>
                   </div>
                   <div>
                     <span className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-black font-display uppercase tracking-wider border-2 ${
@@ -150,7 +140,7 @@ export default function Orders() {
                   <button
                     onClick={() => {
                       order.items.forEach((item: any) => {
-                        addToCart(item.product_id, item.quantity, item);
+                        addToCart(item.productId, item.quantity, item);
                       });
                       navigate('/cart');
                     }}
@@ -165,18 +155,18 @@ export default function Orders() {
                   <ul className="divide-y-2 divide-white/10">
                     {order.items.map((item: any) => (
                       <li key={item.id} className="py-6 flex items-center gap-6 group">
-                        <Link to={`/product/${item.product_id}`} className="flex-shrink-0 w-24 h-24 bg-[#0a0a0a] rounded-xl border border-white/10 [perspective:800px]">
+                        <Link to={`/product/${item.productId}`} className="flex-shrink-0 w-24 h-24 bg-[#0a0a0a] rounded-xl border border-white/10 [perspective:800px]">
                           <motion.img 
                             whileHover={{ scale: 1.15, rotateX: 15, rotateY: -15, z: 30 }}
                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                            src={item.image_url} 
+                            src={item.imageUrl} 
                             alt={item.name} 
                             className="w-full h-full object-cover rounded-xl shadow-xl"
                             referrerPolicy="no-referrer"
                           />
                         </Link>
                         <div className="flex-1">
-                          <Link to={`/product/${item.product_id}`}>
+                          <Link to={`/product/${item.productId}`}>
                             <h4 className="text-lg font-display font-bold text-white group-hover:text-[#CCFF00] transition-colors leading-tight">
                               {item.name}
                             </h4>

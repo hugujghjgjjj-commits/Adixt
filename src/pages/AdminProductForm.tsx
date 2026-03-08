@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage, isFirebaseConfigured } from '../lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, collection } from 'firebase/firestore';
+import { storage, db, isFirebaseConfigured } from '../lib/firebase';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function AdminProductForm() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const isEditing = !!id;
 
@@ -31,47 +32,43 @@ export default function AdminProductForm() {
 
   useEffect(() => {
     if (isEditing) {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      const fetchProduct = async () => {
+        try {
+          const docRef = doc(db, 'products', id!);
+          const docSnap = await getDoc(docRef);
 
-      fetch(`/api/products/${id}`, { headers })
-        .then((res) => {
-          if (!res.ok) throw new Error('Product not found');
-          return res.json();
-        })
-        .then((data) => {
-          setName(data.name);
-          setDescription(data.description || '');
-          setPrice(data.price.toString());
-          setOriginalPrice(data.original_price ? data.original_price.toString() : '');
-          setCategory(data.category);
-          
-          let imgs: string[] = [];
-          if (data.images) {
-            try {
-              imgs = JSON.parse(data.images);
-            } catch (e) {
-              imgs = data.image_url ? [data.image_url] : [];
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setName(data.name);
+            setDescription(data.description || '');
+            setPrice(data.price.toString());
+            setOriginalPrice(data.originalPrice ? data.originalPrice.toString() : '');
+            setCategory(data.category);
+            
+            let imgs: string[] = data.images || [];
+            if (imgs.length === 0 && data.imageUrl) {
+              imgs = [data.imageUrl];
             }
-          } else if (data.image_url) {
-            imgs = [data.image_url];
+            
+            setImages(imgs.map((url, index) => ({
+              id: `existing-${index}`,
+              url,
+              isPrimary: index === 0
+            })));
+          } else {
+            toast.error('Product not found');
+            setError('Product not found');
           }
-          
-          setImages(imgs.map((url, index) => ({
-            id: `existing-${index}`,
-            url,
-            isPrimary: index === 0
-          })));
-          setIsLoading(false);
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error(err);
           toast.error('Failed to load product for editing');
           setError('Failed to load product for editing');
+        } finally {
           setIsLoading(false);
-        });
+        }
+      };
+      
+      fetchProduct();
     }
   }, [id, isEditing]);
 
@@ -270,63 +267,37 @@ export default function AdminProductForm() {
       const imageUrls = finalImages.map(img => img.url);
 
       // Calculate discount percentage if original price is provided
-      let discount_percentage = 0;
+      let discountPercentage = 0;
       if (originalPrice && Number(originalPrice) > Number(price)) {
-        discount_percentage = Math.round(((Number(originalPrice) - Number(price)) / Number(originalPrice)) * 100);
+        discountPercentage = Math.round(((Number(originalPrice) - Number(price)) / Number(originalPrice)) * 100);
       }
 
       // 3. Save or update product in database
-      const url = isEditing ? `/api/products/${id}` : '/api/products';
-      const method = isEditing ? 'PUT' : 'POST';
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
+      const productData = {
+        name,
+        description,
+        price: Number(price),
+        originalPrice: originalPrice ? Number(originalPrice) : null,
+        discountPercentage,
+        category,
+        imageUrl: mainImageUrl,
+        images: imageUrls,
+        stock: 100, // Default stock
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout for large payloads
-
-      try {
-        const res = await fetch(url, {
-          method,
-          headers,
-          body: JSON.stringify({
-            name,
-            description,
-            price: Number(price),
-            original_price: originalPrice ? Number(originalPrice) : null,
-            discount_percentage,
-            category,
-            image_url: mainImageUrl,
-            images: imageUrls
-          }),
-          signal: controller.signal
+      if (isEditing) {
+        const docRef = doc(db, 'products', id!);
+        await updateDoc(docRef, productData);
+        toast.success('Product updated successfully!');
+        navigate(`/product/${id}`);
+      } else {
+        const newDocRef = doc(collection(db, 'products'));
+        await setDoc(newDocRef, {
+          ...productData,
+          createdAt: new Date().toISOString()
         });
-
-        clearTimeout(timeoutId);
-
-        console.log('Product save response status:', res.status);
-        const responseData = await res.json();
-        console.log('Product save response data:', responseData);
-
-        if (res.ok) {
-          toast.success(isEditing ? 'Product updated successfully!' : 'Product added successfully!');
-          navigate(`/product/${responseData.id}`);
-        } else {
-          const errorMsg = responseData.error || `Failed to ${isEditing ? 'update' : 'create'} product`;
-          toast.error(errorMsg);
-          setError(errorMsg);
-          setIsSubmitting(false);
-        }
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-          throw new Error('Request timed out');
-        }
-        throw err;
+        toast.success('Product added successfully!');
+        navigate(`/product/${newDocRef.id}`);
       }
     } catch (err) {
       console.error(err);

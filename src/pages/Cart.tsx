@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'shipping' | 'payment'>('shipping');
@@ -117,9 +117,9 @@ export default function Cart() {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      // if (token) {
+      //   headers['Authorization'] = `Bearer ${token}`;
+      // }
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
@@ -218,11 +218,11 @@ export default function Cart() {
                         transition={{ duration: 0.3 }}
                         className="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 group hover:bg-white/5 transition-colors"
                       >
-                        <Link to={`/product/${item.product_id}`} className="flex-shrink-0 w-32 h-32 bg-[#0a0a0a] rounded-2xl border border-white/10 [perspective:800px]">
+                        <Link to={`/product/${item.productId}`} className="flex-shrink-0 w-32 h-32 bg-[#0a0a0a] rounded-2xl border border-white/10 [perspective:800px]">
                           <motion.img 
                             whileHover={{ scale: 1.15, rotateX: 15, rotateY: -15, z: 30 }}
                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                            src={item.image_url} 
+                            src={item.imageUrl} 
                             alt={item.name} 
                             className="w-full h-full object-cover rounded-2xl shadow-xl"
                             referrerPolicy="no-referrer"
@@ -232,7 +232,7 @@ export default function Cart() {
                         <div className="flex-1 flex flex-col justify-between w-full h-full py-2">
                           <div className="flex justify-between items-start gap-4">
                             <div>
-                              <Link to={`/product/${item.product_id}`}>
+                              <Link to={`/product/${item.productId}`}>
                                 <h3 className="text-xl font-display font-bold text-white group-hover:text-[#CCFF00] transition-colors leading-tight">
                                   {item.name}
                                 </h3>

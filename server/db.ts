@@ -88,7 +88,18 @@ export function initDb() {
       FOREIGN KEY (order_id) REFERENCES orders(id),
       FOREIGN KEY (product_id) REFERENCES products(id)
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  try {
+    db.exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_otp', '123456')");
+  } catch (e) {
+    // Ignore
+  }
 
   try {
     db.exec('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0');

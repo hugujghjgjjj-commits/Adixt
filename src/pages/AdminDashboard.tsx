@@ -4,29 +4,26 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { Plus, Edit, Trash2, Users, Loader2, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function AdminDashboard() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProducts();
-  }, [token]);
+  }, []);
 
   const fetchProducts = async () => {
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch('/api/products', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(Array.isArray(data) ? data : []);
-      } else {
-        toast.error('Failed to fetch products');
-      }
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      const productsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setProducts(productsData);
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('An error occurred while fetching products');
@@ -39,21 +36,9 @@ export default function AdminDashboard() {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-        headers
-      });
-
-      if (res.ok) {
-        toast.success('Product deleted successfully');
-        fetchProducts();
-      } else {
-        toast.error('Failed to delete product');
-      }
+      await deleteDoc(doc(db, 'products', id));
+      toast.success('Product deleted successfully');
+      fetchProducts();
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('An error occurred while deleting product');
@@ -121,7 +106,7 @@ export default function AdminDashboard() {
                       <td className="p-6">
                         <div className="flex items-center gap-4">
                           <div className="w-16 h-16 rounded-xl bg-black border border-white/10 overflow-hidden flex-shrink-0">
-                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
                           </div>
                           <div>
                             <p className="text-white font-display font-bold text-lg leading-tight group-hover:text-[#CCFF00] transition-colors">{product.name}</p>

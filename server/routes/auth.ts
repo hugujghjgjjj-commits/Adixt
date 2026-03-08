@@ -185,4 +185,109 @@ router.get('/me', (req, res) => {
   }
 });
 
+router.post('/become-admin', (req, res) => {
+  try {
+    let token = req.cookies.token;
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const { otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ error: 'OTP is required' });
+    }
+
+    const settings = db.prepare("SELECT value FROM settings WHERE key = 'admin_otp'").get() as any;
+    const currentOtp = settings ? settings.value : '123456';
+
+    if (otp !== currentOtp) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+
+    db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(decoded.id);
+
+    const user = db.prepare('SELECT id, name, email, is_admin FROM users WHERE id = ?').get(decoded.id) as any;
+    const newToken = jwt.sign({ id: user.id, email: user.email, isAdmin: true }, JWT_SECRET, { expiresIn: '7d' });
+    
+    res.cookie('token', newToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.json({ success: true, user: { ...user, isAdmin: true }, token: newToken });
+  } catch (error) {
+    console.error('Become admin error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/admin-otp', (req, res) => {
+  try {
+    let token = req.cookies.token;
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const settings = db.prepare("SELECT value FROM settings WHERE key = 'admin_otp'").get() as any;
+    res.json({ otp: settings ? settings.value : '123456' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/admin-otp', (req, res) => {
+  try {
+    let token = req.cookies.token;
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
+
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded.isAdmin) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const { otp } = req.body;
+    if (!otp || otp.length < 4) {
+      return res.status(400).json({ error: 'OTP must be at least 4 characters' });
+    }
+
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('admin_otp', ?)").run(otp);
+    res.json({ success: true, otp });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

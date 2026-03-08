@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
+import { collection, doc, onSnapshot, setDoc, deleteDoc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface CartItem {
   id: string;
-  product_id: string;
+  productId: string;
   name: string;
   price: number;
   quantity: number;
-  image_url: string;
+  imageUrl: string;
 }
 
 interface CartContextType {
@@ -17,7 +19,6 @@ interface CartContextType {
   addToCart: (productId: string, quantity?: number, productDetails?: any) => Promise<void>;
   updateQuantity: (cartId: string, quantity: number) => Promise<void>;
   removeFromCart: (cartId: string) => Promise<void>;
-  fetchCart: () => Promise<void>;
   clearCart: () => Promise<void>;
 }
 
@@ -26,11 +27,10 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
-  const fetchCart = React.useCallback(async () => {
+  useEffect(() => {
     if (!user) {
-      // Load from local storage
       const localCart = localStorage.getItem('guest_cart');
       if (localCart) {
         try {
@@ -44,44 +44,61 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    
-    try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+
+    const cartRef = collection(db, 'users', user.uid, 'cart');
+    const unsubscribe = onSnapshot(cartRef, async (snapshot) => {
+      try {
+        const cartItems: CartItem[] = [];
+        for (const docSnapshot of snapshot.docs) {
+          const data = docSnapshot.data();
+          // Fetch product details
+          const productRef = doc(db, 'products', data.productId);
+          const productSnap = await getDoc(productRef);
+          if (productSnap.exists()) {
+            const productData = productSnap.data();
+            cartItems.push({
+              id: docSnapshot.id,
+              productId: data.productId,
+              name: productData.name,
+              price: productData.price,
+              quantity: data.quantity,
+              imageUrl: productData.imageUrl
+            });
+          }
+        }
+        setCart(cartItems);
+      } catch (error) {
+        console.error('Error fetching cart:', error);
+      } finally {
+        setLoading(false);
       }
-      const res = await fetch('/api/cart', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setCart(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch cart', error);
-    } finally {
+    }, (error) => {
+      console.error('Firestore Error: ', error);
       setLoading(false);
-    }
-  }, [user, token]);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Sync local cart to backend when user logs in
   useEffect(() => {
     const syncLocalCart = async () => {
-      if (user && token) {
+      if (user) {
         const localCart = localStorage.getItem('guest_cart');
         if (localCart) {
           try {
             const parsedCart = JSON.parse(localCart) as CartItem[];
             if (parsedCart.length > 0) {
-              // Send all items to backend
+              const batch = writeBatch(db);
               for (const item of parsedCart) {
-                await fetch('/api/cart', {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify({ productId: item.product_id, quantity: item.quantity }),
+                const cartItemRef = doc(collection(db, 'users', user.uid, 'cart'));
+                batch.set(cartItemRef, {
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  addedAt: new Date().toISOString()
                 });
               }
+              await batch.commit();
               localStorage.removeItem('guest_cart');
               toast.success('Guest cart synced with your account');
             }
@@ -89,35 +106,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
             console.error('Failed to sync local cart', e);
           }
         }
-        fetchCart();
-      } else if (!user) {
-        fetchCart();
       }
     };
 
     syncLocalCart();
-  }, [user, token, fetchCart]);
+  }, [user]);
 
   const addToCart = async (productId: string, quantity = 1, productDetails?: any) => {
     if (!user) {
-      // Add to local storage
       const newCart = [...cart];
-      const existingItemIndex = newCart.findIndex(item => item.product_id === productId);
+      const existingItemIndex = newCart.findIndex(item => item.productId === productId);
       
       if (existingItemIndex >= 0) {
         newCart[existingItemIndex].quantity += quantity;
       } else if (productDetails) {
         newCart.push({
           id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          product_id: productId,
+          productId: productId,
           name: productDetails.name,
           price: productDetails.price,
           quantity: quantity,
-          image_url: productDetails.image_url || productDetails.images?.[0] || 'https://picsum.photos/seed/placeholder/400/400'
+          imageUrl: productDetails.imageUrl || productDetails.images?.[0] || 'https://picsum.photos/seed/placeholder/400/400'
         });
       } else {
-        // If we don't have product details, we can't add to local cart properly
-        // This shouldn't happen if we pass details from ProductDetails or Home
         toast.error('Could not add to cart. Please login.');
         return;
       }
@@ -129,21 +140,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      // Check if item already exists in cart
+      const existingItem = cart.find(item => item.productId === productId);
+      if (existingItem) {
+        const cartItemRef = doc(db, 'users', user.uid, 'cart', existingItem.id);
+        await updateDoc(cartItemRef, {
+          quantity: existingItem.quantity + quantity
+        });
+      } else {
+        const cartItemRef = doc(collection(db, 'users', user.uid, 'cart'));
+        await setDoc(cartItemRef, {
+          productId,
+          quantity,
+          addedAt: new Date().toISOString()
+        });
       }
-      const res = await fetch('/api/cart', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ productId, quantity }),
-      });
-      if (res.ok) {
-        await fetchCart();
-        toast.success('Added to cart');
-      }
+      toast.success('Added to cart');
     } catch (error) {
       console.error('Failed to add to cart', error);
       toast.error('Failed to add to cart');
@@ -165,20 +177,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch(`/api/cart/${cartId}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ quantity }),
-      });
-      if (res.ok) {
-        await fetchCart();
-      }
+      const cartItemRef = doc(db, 'users', user.uid, 'cart', cartId);
+      await updateDoc(cartItemRef, { quantity });
     } catch (error) {
       console.error('Failed to update quantity', error);
       toast.error('Failed to update quantity');
@@ -195,18 +195,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch(`/api/cart/${cartId}`, {
-        method: 'DELETE',
-        headers
-      });
-      if (res.ok) {
-        await fetchCart();
-        toast.success('Removed from cart');
-      }
+      const cartItemRef = doc(db, 'users', user.uid, 'cart', cartId);
+      await deleteDoc(cartItemRef);
+      toast.success('Removed from cart');
     } catch (error) {
       console.error('Failed to remove from cart', error);
       toast.error('Failed to remove from cart');
@@ -221,18 +212,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch('/api/cart', {
-        method: 'DELETE',
-        headers
+      const batch = writeBatch(db);
+      cart.forEach(item => {
+        const cartItemRef = doc(db, 'users', user.uid, 'cart', item.id);
+        batch.delete(cartItemRef);
       });
-      if (res.ok) {
-        setCart([]);
-        toast.success('Cart cleared');
-      }
+      await batch.commit();
+      toast.success('Cart cleared');
     } catch (error) {
       console.error('Failed to clear cart', error);
       toast.error('Failed to clear cart');
@@ -240,7 +226,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <CartContext.Provider value={{ cart, loading, addToCart, updateQuantity, removeFromCart, fetchCart, clearCart }}>
+    <CartContext.Provider value={{ cart, loading, addToCart, updateQuantity, removeFromCart, clearCart }}>
       {children}
     </CartContext.Provider>
   );

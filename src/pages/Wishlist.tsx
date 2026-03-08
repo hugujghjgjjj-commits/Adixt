@@ -81,11 +81,11 @@ export default function Wishlist() {
                       <Trash2 className="h-5 w-5" />
                     </motion.button>
                     
-                    <Link to={`/product/${item.product_id}`} className="block relative overflow-hidden rounded-2xl mb-5 bg-[#0a0a0a] aspect-[4/5] border border-white/5">
+                    <Link to={`/product/${item.productId}`} className="block relative overflow-hidden rounded-2xl mb-5 bg-[#0a0a0a] aspect-[4/5] border border-white/5">
                       <motion.img 
                         whileHover={{ scale: 1.15, rotateX: 10, rotateY: -10 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                        src={item.image_url} 
+                        src={item.imageUrl} 
                         alt={item.name} 
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
@@ -93,7 +93,7 @@ export default function Wishlist() {
                     </Link>
                     
                     <div className="flex flex-col flex-1 justify-between [transform:translateZ(20px)]">
-                      <Link to={`/product/${item.product_id}`}>
+                      <Link to={`/product/${item.productId}`}>
                         <h3 className="text-xl font-display font-bold text-white mb-3 line-clamp-2 group-hover:text-[#FF00FF] transition-colors leading-tight">
                           {item.name}
                         </h3>
@@ -104,7 +104,7 @@ export default function Wishlist() {
                           whileHover={{ scale: 1.1, rotate: -5 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => {
-                            addToCart(item.product_id);
+                            addToCart(item.productId);
                             removeFromWishlist(item.id);
                           }}
                           className="flex items-center justify-center bg-[#CCFF00] text-black hover:bg-white p-3 rounded-xl transition-all shadow-[0_0_15px_rgba(204,255,0,0.3)]"

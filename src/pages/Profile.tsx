@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'motion/react';
-import { User, Mail, Calendar, Package, Shield, LogOut } from 'lucide-react';
+import { User, Mail, Calendar, Package, Shield, LogOut, Key } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  const { user, logout, token } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,9 +18,9 @@ export default function Profile() {
     }
 
     const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    // if (token) {
+    //   headers['Authorization'] = `Bearer ${token}`;
+    // }
 
     fetch('/api/orders', { headers })
       .then((res) => res.json())
