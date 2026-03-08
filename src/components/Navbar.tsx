@@ -223,7 +223,7 @@ export default function Navbar() {
               className="fixed inset-y-0 left-0 w-80 bg-[#111] z-50 overflow-y-auto border-r border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]"
             >
               <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                <span className="text-2xl font-black text-[#CCFF00] tracking-tighter uppercase font-display">ADIXT</span>
+                <span className="text-2xl font-black text-[#CCFF00] tracking-tighter uppercase font-display text-3d">ADIXT</span>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-white transition-colors">
                   <X className="h-6 w-6" />
                 </button>
@@ -232,7 +232,7 @@ export default function Navbar() {
               <div className="p-4">
                 {!user ? (
                   <div className="mb-6">
-                    <h3 className="text-xl font-display font-black text-white mb-2 uppercase leading-tight">Unlock the full experience</h3>
+                    <h3 className="text-xl font-display font-black text-white mb-2 uppercase leading-tight text-3d">Unlock the full experience</h3>
                     <p className="text-sm font-mono text-gray-400 mb-6">Sign in to track orders, get support, and earn rewards. No cap.</p>
                     <Link to="/login" className="block w-full text-center bg-[#CCFF00] hover:bg-white text-black font-display font-black py-3 rounded-full transition-colors uppercase tracking-wider" onClick={() => setIsMobileMenuOpen(false)}>
                       Sign in

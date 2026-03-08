@@ -32,7 +32,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="text-white font-display font-black uppercase tracking-wider mb-6">Shop</h3>
+            <h3 className="text-white font-display font-black uppercase tracking-wider mb-6 text-3d">Shop</h3>
             <ul className="space-y-4">
               <li><Link to="/?category=all" className="text-gray-400 hover:text-[#CCFF00] font-mono text-sm transition-colors">All Products</Link></li>
               <li><Link to="/?category=clothing" className="text-gray-400 hover:text-[#CCFF00] font-mono text-sm transition-colors">Clothing</Link></li>
@@ -42,7 +42,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="text-white font-display font-black uppercase tracking-wider mb-6">Support</h3>
+            <h3 className="text-white font-display font-black uppercase tracking-wider mb-6 text-3d">Support</h3>
             <ul className="space-y-4">
               <li><Link to="/" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">FAQ</Link></li>
               <li><Link to="/" className="text-gray-400 hover:text-[#00FFFF] font-mono text-sm transition-colors">Shipping & Returns</Link></li>
@@ -52,7 +52,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="text-white font-display font-black uppercase tracking-wider mb-6">Stay Updated</h3>
+            <h3 className="text-white font-display font-black uppercase tracking-wider mb-6 text-3d">Stay Updated</h3>
             <p className="text-gray-400 font-mono text-sm mb-4">Subscribe to get special offers, free giveaways, and once-in-a-lifetime deals.</p>
             <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); alert('Subscribed!'); }}>
               <input 

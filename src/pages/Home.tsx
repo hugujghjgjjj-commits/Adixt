@@ -140,7 +140,7 @@ export default function Home() {
           >
             <div className="flex-1 z-10">
               <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
-                <span className="text-sm font-mono text-[#CCFF00] font-bold uppercase tracking-wider">New Arrivals ✦</span>
+                <span className="text-sm font-mono text-[#CCFF00] font-bold uppercase tracking-wider text-3d-primary">New Arrivals ✦</span>
               </div>
               <h1 className="text-6xl md:text-8xl font-black font-display tracking-tighter mb-6 leading-[0.85] uppercase glow-text text-3d">
                 Cop The <br/>
@@ -155,7 +155,7 @@ export default function Home() {
                 onClick={() => {
                   document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="bg-[#CCFF00] text-black px-10 py-4 rounded-full font-display font-black text-xl hover:scale-105 glow-button transition-all duration-300 uppercase tracking-wide flex items-center gap-2"
+                className="bg-[#CCFF00] text-black px-10 py-4 rounded-full font-display font-black text-xl hover:scale-105 glow-button transition-all duration-300 uppercase tracking-wide flex items-center gap-2 text-3d-primary"
               >
                 Shop The Drop <Zap className="w-5 h-5 fill-black" />
               </button>
@@ -213,7 +213,7 @@ export default function Home() {
         {/* Recently Viewed */}
         {recentlyViewed.length > 0 && (
           <div className="mb-12">
-            <h2 className="text-2xl font-black font-display text-white mb-6 uppercase tracking-wider">Recently Viewed</h2>
+            <h2 className="text-2xl font-black font-display text-white mb-6 uppercase tracking-wider text-3d">Recently Viewed</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {recentlyViewed.map(product => (
                 <Link to={`/product/${product.id}`} key={product.id} className="bg-[#111] p-3 rounded-xl border border-white/10 hover:border-[#CCFF00] transition-colors">
@@ -230,7 +230,7 @@ export default function Home() {
         <div className="flex-1" id="product-grid">
           {search && (
             <div className="mb-8 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">
+              <h2 className="text-2xl font-bold text-white text-3d">
                 Search results for "{search}"
               </h2>
               <button 

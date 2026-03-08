@@ -85,7 +85,7 @@ export default function Orders() {
       className="min-h-screen bg-[#000000] py-12 text-white selection:bg-[#CCFF00] selection:text-black"
     >
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-5xl md:text-6xl font-black font-display mb-10 tracking-tighter uppercase">Your Hauls 📦</h1>
+        <h1 className="text-5xl md:text-6xl font-black font-display mb-10 tracking-tighter uppercase text-3d">Your Hauls 📦</h1>
 
         {orders.length === 0 ? (
           <motion.div 
@@ -94,7 +94,7 @@ export default function Orders() {
             className="bg-[#111] rounded-[2rem] p-16 text-center border-2 border-white/10 shadow-[8px_8px_0px_rgba(204,255,0,0.2)]"
           >
             <Package className="h-24 w-24 text-gray-600 mx-auto mb-6" />
-            <h2 className="text-3xl font-black font-display mb-4 uppercase">No hauls yet</h2>
+            <h2 className="text-3xl font-black font-display mb-4 uppercase text-3d">No hauls yet</h2>
             <p className="text-gray-400 mb-10 font-mono text-lg">You haven't copped anything yet. Start shopping to build your stash.</p>
             <Link 
               to="/" 

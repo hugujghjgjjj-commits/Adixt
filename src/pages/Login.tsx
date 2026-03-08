@@ -49,7 +49,7 @@ export default function Login() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-2 text-center text-4xl font-black font-display text-white tracking-tighter uppercase"
+            className="mt-2 text-center text-4xl font-black font-display text-white tracking-tighter uppercase text-3d"
           >
             Welcome Back
           </motion.h2>

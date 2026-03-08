@@ -38,17 +38,30 @@ body {
   
   .text-3d {
     text-shadow: 
-      0 1px 0 #ccc,
-      0 2px 0 #c9c9c9,
-      0 3px 0 #bbb,
-      0 4px 0 #b9b9b9,
-      0 5px 0 #aaa,
-      0 6px 1px rgba(0,0,0,.1),
-      0 0 5px rgba(0,0,0,.1),
-      0 1px 3px rgba(0,0,0,.3),
-      0 3px 5px rgba(0,0,0,.2),
-      0 5px 10px rgba(0,0,0,.25),
-      0 10px 10px rgba(0,0,0,.2),
-      0 20px 20px rgba(0,0,0,.15);
+      1px 1px 0 #4a4a4a,
+      2px 2px 0 #3a3a3a,
+      3px 3px 0 #2a2a2a,
+      4px 4px 0 #1a1a1a,
+      5px 5px 0 #000000,
+      5px 5px 10px rgba(0,0,0,0.5);
+  }
+
+  .text-3d-neon {
+    text-shadow: 
+      1px 1px 0 #8aace0,
+      2px 2px 0 #6b8cbf,
+      3px 3px 0 #4c6c9e,
+      4px 4px 0 #2d4c7d,
+      5px 5px 0 #0e2c5c,
+      5px 5px 10px rgba(204, 255, 0, 0.3);
+  }
+  
+  .text-3d-primary {
+    text-shadow: 
+      1px 1px 0 #99cc00,
+      2px 2px 0 #669900,
+      3px 3px 0 #336600,
+      4px 4px 0 #003300,
+      5px 5px 10px rgba(0,0,0,0.5);
   }
 }

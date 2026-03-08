@@ -72,7 +72,7 @@ export default function AdminUsers() {
   if (!user?.isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider">Access Denied</h1>
+        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider text-3d">Access Denied</h1>
         <p className="text-gray-400 font-mono mb-8">You need host privileges to access this page.</p>
         <Link to="/" className="bg-[#CCFF00] text-black font-black font-display uppercase tracking-wider px-8 py-3 rounded-full hover:bg-white transition-colors">
           Return Home
@@ -84,7 +84,7 @@ export default function AdminUsers() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-black font-display text-white uppercase tracking-wider">User Management</h1>
+        <h1 className="text-4xl font-black font-display text-white uppercase tracking-wider text-3d">User Management</h1>
         <Link to="/admin" className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-full font-mono text-sm transition-colors border border-white/20">
           Back to Dashboard
         </Link>

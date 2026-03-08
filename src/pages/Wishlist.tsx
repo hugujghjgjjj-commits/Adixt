@@ -32,7 +32,7 @@ export default function Wishlist() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-4 mb-10">
           <Heart className="h-10 w-10 text-[#FF00FF] fill-[#FF00FF] drop-shadow-[0_0_15px_rgba(255,0,255,0.5)]" />
-          <h1 className="text-5xl md:text-6xl font-black font-display tracking-tighter uppercase">Your Wishlist</h1>
+          <h1 className="text-5xl md:text-6xl font-black font-display tracking-tighter uppercase text-3d">Your Wishlist</h1>
         </div>
 
         {wishlist.length === 0 ? (

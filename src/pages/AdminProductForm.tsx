@@ -75,7 +75,7 @@ export default function AdminProductForm() {
   if (!user?.isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider">Access Denied</h1>
+        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider text-3d">Access Denied</h1>
         <p className="text-gray-400 font-mono mb-8">You need host privileges to access this page.</p>
         <Link to="/" className="bg-[#CCFF00] text-black font-black font-display uppercase tracking-wider px-8 py-3 rounded-full hover:bg-white transition-colors">
           Return Home
@@ -324,7 +324,7 @@ export default function AdminProductForm() {
         className="bg-[#111] rounded-[2rem] p-8 md:p-12 border-2 border-white/10 shadow-[8px_8px_0px_rgba(204,255,0,0.15)]"
       >
         <div className="mb-10">
-          <h1 className="text-4xl font-black font-display text-white uppercase tracking-wider mb-2">
+          <h1 className="text-4xl font-black font-display text-white uppercase tracking-wider mb-2 text-3d">
             {isEditing ? 'Edit Product' : 'Add New Product'}
           </h1>
           <p className="text-gray-400 font-mono">

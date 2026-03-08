@@ -49,7 +49,7 @@ export default function Profile() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-12"
       >
-        <h1 className="text-4xl md:text-5xl font-black font-display text-white uppercase tracking-wider mb-2">
+        <h1 className="text-4xl md:text-5xl font-black font-display text-white uppercase tracking-wider mb-2 text-3d">
           Your Profile
         </h1>
         <p className="text-gray-400 font-mono">Manage your account details and view history.</p>
@@ -124,7 +124,7 @@ export default function Profile() {
         >
           <div className="bg-[#111] rounded-[2rem] border-2 border-white/10 p-8 shadow-[8px_8px_0px_rgba(255,255,255,0.05)] h-full">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-black font-display text-white uppercase tracking-wider flex items-center gap-3">
+              <h2 className="text-2xl font-black font-display text-white uppercase tracking-wider flex items-center gap-3 text-3d">
                 <Package className="h-6 w-6 text-[#CCFF00]" />
                 Recent Hauls
               </h2>

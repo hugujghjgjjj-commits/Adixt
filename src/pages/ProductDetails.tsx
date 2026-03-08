@@ -341,7 +341,7 @@ export default function ProductDetails() {
               </div>
 
               <div className="flex items-end gap-4 mb-8">
-                <div className="text-5xl font-black font-display text-[#CCFF00]">
+                <div className="text-5xl font-black font-display text-[#CCFF00] text-3d-neon">
                   ₹{product.price}
                 </div>
                 {product.originalPrice && (
@@ -458,7 +458,7 @@ export default function ProductDetails() {
           transition={{ duration: 0.5 }}
           className="bg-[#111] rounded-[2rem] border-2 border-white/10 p-8 lg:p-12 shadow-[8px_8px_0px_rgba(255,255,255,0.05)]"
         >
-          <h2 className="text-4xl font-black font-display text-white mb-8 uppercase tracking-tighter">The Vibe Check</h2>
+          <h2 className="text-4xl font-black font-display text-white mb-8 uppercase tracking-tighter text-3d">The Vibe Check</h2>
           
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex-1">
@@ -573,7 +573,7 @@ export default function ProductDetails() {
           className="mt-24"
         >
           <div className="flex items-center justify-between mb-10">
-            <h2 className="text-4xl font-black font-display text-white uppercase tracking-tighter">You Might Also Dig ⚡️</h2>
+            <h2 className="text-4xl font-black font-display text-white uppercase tracking-tighter text-3d">You Might Also Dig ⚡️</h2>
             <Link to="/" className="text-[#CCFF00] font-mono text-sm hover:underline underline-offset-4 uppercase tracking-widest font-bold">View All</Link>
           </div>
           

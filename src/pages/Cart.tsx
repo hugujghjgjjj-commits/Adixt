@@ -173,7 +173,7 @@ export default function Cart() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-10">
-          <h1 className="text-5xl md:text-6xl font-black font-display tracking-tighter uppercase">Your Stash 🛒</h1>
+          <h1 className="text-5xl md:text-6xl font-black font-display tracking-tighter uppercase text-3d">Your Stash 🛒</h1>
           {cart.length > 0 && (
             <button
               onClick={clearCart}
@@ -286,7 +286,7 @@ export default function Cart() {
               className="w-full lg:w-96 flex-shrink-0"
             >
               <div className="bg-[#111] rounded-[2rem] p-8 border-2 border-white/10 sticky top-24 shadow-[8px_8px_0px_rgba(204,255,0,0.15)]">
-                <h2 className="text-2xl font-black font-display text-white mb-8 uppercase tracking-wider">Order Summary</h2>
+                <h2 className="text-2xl font-black font-display text-white mb-8 uppercase tracking-wider text-3d">Order Summary</h2>
                 
                 <div className="space-y-5 mb-8">
                   <div className="flex gap-2 mb-4">
@@ -378,7 +378,7 @@ export default function Cart() {
               {checkoutStep === 'shipping' ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="text-center mb-8">
-                    <h2 className="text-3xl font-black font-display text-white uppercase tracking-wider">Shipping Details</h2>
+                    <h2 className="text-3xl font-black font-display text-white uppercase tracking-wider text-3d">Shipping Details</h2>
                     <p className="text-gray-400 mt-2 font-mono text-sm">Where should we send your heat?</p>
                   </div>
 
@@ -520,7 +520,7 @@ export default function Cart() {
                     <div className="bg-[#CCFF00] w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_20px_rgba(204,255,0,0.4)]">
                       <CreditCard className="h-10 w-10 text-black" />
                     </div>
-                    <h2 className="text-3xl font-black font-display text-white uppercase tracking-wider">Secure Checkout</h2>
+                    <h2 className="text-3xl font-black font-display text-white uppercase tracking-wider text-3d">Secure Checkout</h2>
                     <p className="text-gray-400 mt-3 font-mono">Total to pay: <span className="text-[#CCFF00] font-bold text-lg">₹{total}</span></p>
                     
                     <div className="mt-6 max-w-xs mx-auto">

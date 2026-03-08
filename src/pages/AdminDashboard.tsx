@@ -48,7 +48,7 @@ export default function AdminDashboard() {
   if (!user?.isAdmin) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider">Access Denied</h1>
+        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider text-3d">Access Denied</h1>
         <p className="text-gray-400 font-mono mb-8">You need host privileges to access this page.</p>
         <Link to="/" className="bg-[#CCFF00] text-black font-black font-display uppercase tracking-wider px-8 py-3 rounded-full hover:bg-white transition-colors">
           Return Home
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-4xl font-black font-display text-white uppercase tracking-wider mb-2">Admin Dashboard</h1>
+          <h1 className="text-4xl font-black font-display text-white uppercase tracking-wider mb-2 text-3d">Admin Dashboard</h1>
           <p className="text-gray-400 font-mono">Manage your store's inventory and users.</p>
         </div>
         <div className="flex flex-wrap gap-4">
