@@ -4,11 +4,11 @@ let aiInstance: GoogleGenAI | null = null;
 
 const getAI = () => {
   if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn("GEMINI_API_KEY is not set. AI features might fail.");
+      throw new Error("GEMINI_API_KEY is not set. Please check your environment variables.");
     }
-    aiInstance = new GoogleGenAI({ apiKey: apiKey || 'missing-key' });
+    aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
 };

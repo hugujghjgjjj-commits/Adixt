@@ -102,7 +102,7 @@ service cloud.firestore {
              data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
              data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
              (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
-             data.role in ['admin', 'customer'] &&
+             data.role in ['admin', 'user', 'customer'] &&
              isValidDateString(data.createdAt);
     }
 
@@ -176,7 +176,7 @@ service cloud.firestore {
                        isOwner(userId) &&
                        isValidUser(request.resource.data) &&
                        request.resource.data.uid == userId &&
-                       ((request.resource.data.role == 'customer') || isAdmin());
+                       ((request.resource.data.role == 'user' || request.resource.data.role == 'customer') || isAdmin());
       allow update: if isAuthenticated() &&
                        isValidUser(request.resource.data) &&
                        request.resource.data.uid == resource.data.uid &&

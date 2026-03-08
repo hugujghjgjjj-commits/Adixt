@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon, X, Sparkles, Wand2, Video } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { doc, getDoc, setDoc, updateDoc, collection, deleteField } from 'firebase/firestore';
 import { storage, db, isFirebaseConfigured } from '../lib/firebase';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { aiService } from '../services/aiService';
 
 export default function AdminProductForm() {
   const { user, loading: authLoading } = useAuth();
@@ -24,11 +25,18 @@ export default function AdminProductForm() {
     file?: File;
     isPrimary: boolean;
   }[]>([]);
+  const [videoUrl, setVideoUrl] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditing);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [videoPrompt, setVideoPrompt] = useState('');
 
   useEffect(() => {
     if (isEditing && !authLoading && user?.isAdmin) {
@@ -44,6 +52,7 @@ export default function AdminProductForm() {
             setPrice(data.price.toString());
             setOriginalPrice(data.originalPrice ? data.originalPrice.toString() : '');
             setCategory(data.category);
+            setVideoUrl(data.videoUrl || '');
             
             let imgs: string[] = data.images || [];
             if (imgs.length === 0 && data.imageUrl) {
@@ -69,6 +78,8 @@ export default function AdminProductForm() {
       };
       
       fetchProduct();
+    } else if (isEditing && !authLoading) {
+      setIsLoading(false);
     }
   }, [id, isEditing, authLoading, user]);
 
@@ -81,15 +92,7 @@ export default function AdminProductForm() {
   }
 
   if (!user?.isAdmin) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider text-3d">Access Denied</h1>
-        <p className="text-gray-400 font-mono mb-8">You need host privileges to access this page.</p>
-        <Link to="/" className="bg-[#CCFF00] text-black font-black font-display uppercase tracking-wider px-8 py-3 rounded-full hover:bg-white transition-colors">
-          Return Home
-        </Link>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -123,7 +126,6 @@ export default function AdminProductForm() {
   const removeImage = (id: string) => {
     setImages(prev => {
       const filtered = prev.filter(img => img.id !== id);
-      // If we removed the primary, set the first one as primary
       if (prev.find(img => img.id === id)?.isPrimary && filtered.length > 0) {
         filtered[0].isPrimary = true;
       }
@@ -146,6 +148,106 @@ export default function AdminProductForm() {
     setImages(newImages);
   };
 
+  const generateDescription = async () => {
+    if (!name) {
+      toast.error('Please enter a product name first');
+      return;
+    }
+    setIsGeneratingDesc(true);
+    try {
+      const prompt = `Write a compelling, edgy, and modern product description for a streetwear item named "${name}". The category is ${category}. Make it sound premium and highly desirable. Keep it under 3 paragraphs.`;
+      const text = await aiService.askComplexQuestion(prompt);
+      setDescription(text || '');
+      toast.success('Description generated!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate description');
+    } finally {
+      setIsGeneratingDesc(false);
+    }
+  };
+
+  const generateImage = async () => {
+    if (!imagePrompt) {
+      toast.error('Please enter an image prompt');
+      return;
+    }
+    setIsGeneratingImage(true);
+    try {
+      const imageUrl = await aiService.generateImage(imagePrompt);
+      
+      if (imageUrl) {
+        // Convert base64 to File object
+        const res = await fetch(imageUrl);
+        const blob = await res.blob();
+        const file = new File([blob], `ai-generated-${Date.now()}.png`, { type: 'image/png' });
+        
+        const newImage = {
+          id: `ai-${Date.now()}`,
+          url: imageUrl,
+          file,
+          isPrimary: images.length === 0
+        };
+        setImages(prev => [...prev, newImage]);
+        setImagePrompt('');
+        toast.success('Image generated!');
+      } else {
+        toast.error('No image generated');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate image. Make sure API key is valid.');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const generateVideo = async () => {
+    if (!videoPrompt) {
+      toast.error('Please enter a video prompt');
+      return;
+    }
+    setIsGeneratingVideo(true);
+    try {
+      const operation = await aiService.generateVideo(videoPrompt);
+      toast('Video generation started. This may take a while...', { icon: '⏳' });
+      
+      const uri = await aiService.pollVideoOperation(operation);
+      if (uri) {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+        const videoRes = await fetch(uri, {
+            headers: { 'x-goog-api-key': apiKey! }
+        });
+        const videoBlob = await videoRes.blob();
+        const videoFile = new File([videoBlob], `ai-video-${Date.now()}.mp4`, { type: 'video/mp4' });
+        
+        // Upload to Firebase Storage
+        if (isFirebaseConfigured) {
+             const storageRef = ref(storage, `products/videos/${Date.now()}_ai_video.mp4`);
+             const uploadTask = uploadBytesResumable(storageRef, videoFile);
+             
+             await new Promise((resolve, reject) => {
+                 uploadTask.on('state_changed', null, reject, () => resolve(null));
+             });
+             const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+             setVideoUrl(downloadUrl);
+             toast.success('Video generated and uploaded!');
+        } else {
+            // Fallback for offline/no-firebase
+            const localUrl = URL.createObjectURL(videoFile);
+            setVideoUrl(localUrl);
+            toast.success('Video generated (local preview)!');
+        }
+        setVideoPrompt('');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate video');
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -165,10 +267,8 @@ export default function AdminProductForm() {
       setIsSubmitting(true);
       setError('');
 
-      // 1. Upload new images to Firebase Storage or convert to Base64
       const finalImages = await Promise.all(images.map(async (img) => {
         if (img.file) {
-          // Helper to compress and convert to Base64
           const toBase64 = (file: File): Promise<string> => {
             return new Promise((resolve, reject) => {
               const reader = new FileReader();
@@ -178,7 +278,7 @@ export default function AdminProductForm() {
                   const canvas = document.createElement('canvas');
                   let width = img.width;
                   let height = img.height;
-                  const maxDim = 800; // Resize to max 800px
+                  const maxDim = 800;
                   
                   if (width > height) {
                     if (width > maxDim) {
@@ -197,8 +297,6 @@ export default function AdminProductForm() {
                   const ctx = canvas.getContext('2d');
                   if (!ctx) return reject('No canvas context');
                   ctx.drawImage(img, 0, 0, width, height);
-                  
-                  // Compress as JPEG with 0.7 quality
                   resolve(canvas.toDataURL('image/jpeg', 0.7));
                 };
                 img.onerror = () => reject('Failed to load image');
@@ -216,14 +314,13 @@ export default function AdminProductForm() {
                 const uploadTask = uploadBytesResumable(storageRef, img.file!);
 
                 let isTimedOut = false;
-                // Add a timeout to prevent infinite hanging
                 const timeoutId = setTimeout(() => {
                   if (uploadTask.snapshot.state === 'running') {
                     isTimedOut = true;
                     uploadTask.cancel();
                   }
                   reject('Upload timed out');
-                }, 15000); // Reduced to 15 seconds timeout
+                }, 15000);
 
                 uploadTask.on(
                   'state_changed',
@@ -233,7 +330,6 @@ export default function AdminProductForm() {
                   },
                   (error) => {
                     clearTimeout(timeoutId);
-                    // Ignore cancellation error if it was caused by our timeout
                     if (error.code === 'storage/canceled' && isTimedOut) {
                       console.warn('Upload canceled due to timeout');
                       return;
@@ -262,9 +358,8 @@ export default function AdminProductForm() {
               return { ...img, url: base64Url };
             }
           } else {
-            // Fallback: Convert to Base64
             const url = await toBase64(img.file);
-            setUploadProgress(100); // Instant upload for base64
+            setUploadProgress(100);
             return { ...img, url };
           }
         }
@@ -274,13 +369,11 @@ export default function AdminProductForm() {
       const mainImageUrl = finalImages.find(img => img.isPrimary)?.url || finalImages[0].url;
       const imageUrls = finalImages.map(img => img.url);
 
-      // Calculate discount percentage if original price is provided
       let discountPercentage = 0;
       if (originalPrice && Number(originalPrice) > Number(price)) {
         discountPercentage = Math.round(((Number(originalPrice) - Number(price)) / Number(originalPrice)) * 100);
       }
 
-      // 3. Save or update product in database
       const productData: any = {
         name,
         description,
@@ -288,7 +381,8 @@ export default function AdminProductForm() {
         category,
         imageUrl: mainImageUrl,
         images: imageUrls,
-        stock: 100, // Default stock
+        videoUrl,
+        stock: 100,
       };
 
       if (originalPrice && Number(originalPrice) > 0) {
@@ -364,7 +458,6 @@ export default function AdminProductForm() {
                       </div>
                     )}
                     
-                    {/* Actions */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
                       <div className="flex justify-between">
                         <button type="button" onClick={() => removeImage(img.id)} className="text-white hover:text-red-500"><X className="w-5 h-5" /></button>
@@ -396,9 +489,35 @@ export default function AdminProductForm() {
                     Add URL
                   </button>
                 </div>
+                
                 <div className="flex items-center gap-4">
                   <div className="h-[1px] flex-1 bg-white/10"></div>
-                  <span className="text-[10px] font-mono text-gray-500 uppercase">OR</span>
+                  <span className="text-[10px] font-mono text-gray-500 uppercase">OR AI GENERATE</span>
+                  <div className="h-[1px] flex-1 bg-white/10"></div>
+                </div>
+
+                <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    placeholder="Describe an image to generate..."
+                    className="flex-1 bg-black border-2 border-[#CCFF00]/30 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-[#CCFF00] transition-colors font-mono text-sm"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={generateImage}
+                    disabled={isGeneratingImage || !imagePrompt}
+                    className="bg-[#CCFF00]/20 hover:bg-[#CCFF00]/40 text-[#CCFF00] px-4 py-2 rounded-xl font-bold text-xs uppercase transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isGeneratingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    Generate
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="h-[1px] flex-1 bg-white/10"></div>
+                  <span className="text-[10px] font-mono text-gray-500 uppercase">OR UPLOAD</span>
                   <div className="h-[1px] flex-1 bg-white/10"></div>
                 </div>
               </div>
@@ -429,6 +548,43 @@ export default function AdminProductForm() {
                   )}
                 </div>
               </div>
+
+              {/* Video Generation Section */}
+              <div className="space-y-4">
+                <label className="block text-sm font-bold font-mono text-gray-300 uppercase tracking-wider">Product Video (Beta)</label>
+                
+                {videoUrl && (
+                  <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-white/20 mb-4">
+                    <video src={videoUrl} controls className="w-full h-full object-cover" />
+                    <button 
+                      type="button" 
+                      onClick={() => setVideoUrl('')} 
+                      className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    value={videoPrompt}
+                    onChange={(e) => setVideoPrompt(e.target.value)}
+                    placeholder="Describe a video to generate..."
+                    className="flex-1 bg-black border-2 border-[#CCFF00]/30 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-[#CCFF00] transition-colors font-mono text-sm"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={generateVideo}
+                    disabled={isGeneratingVideo || !videoPrompt}
+                    className="bg-[#CCFF00]/20 hover:bg-[#CCFF00]/40 text-[#CCFF00] px-4 py-2 rounded-xl font-bold text-xs uppercase transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isGeneratingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Video className="w-4 h-4" />}
+                    Generate Video
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Right Column - Product Details */}
@@ -447,11 +603,22 @@ export default function AdminProductForm() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold font-mono text-gray-300 uppercase tracking-wider mb-2">Description</label>
+                <div className="flex justify-between items-end mb-2">
+                  <label className="block text-sm font-bold font-mono text-gray-300 uppercase tracking-wider">Description</label>
+                  <button
+                    type="button"
+                    onClick={generateDescription}
+                    disabled={isGeneratingDesc || !name}
+                    className="text-xs font-mono font-bold text-[#CCFF00] hover:text-white transition-colors flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {isGeneratingDesc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                    AI Generate
+                  </button>
+                </div>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
+                  rows={5}
                   className="w-full bg-black border-2 border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#CCFF00] transition-colors font-mono resize-none"
                   placeholder="Describe the heat..."
                   disabled={isSubmitting}
@@ -508,7 +675,9 @@ export default function AdminProductForm() {
           </div>
 
           <div className="pt-6 border-t border-white/10">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={isSubmitting}
               className="w-full bg-[#CCFF00] text-black font-black font-display text-xl uppercase tracking-wider py-4 rounded-xl hover:bg-white transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(204,255,0,0.3)]"
@@ -524,7 +693,7 @@ export default function AdminProductForm() {
                   {isEditing ? 'Save Changes' : 'Add Product to Store'}
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
         </form>
       </motion.div>

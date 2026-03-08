@@ -7,7 +7,7 @@ export interface User {
   uid: string;
   name: string;
   email: string;
-  role: 'admin' | 'customer';
+  role: 'admin' | 'user';
   createdAt: string;
   isAdmin?: boolean;
 }
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               name: firebaseUser.displayName || '',
-              role: firebaseUser.email === 'mkmznup12@gmail.com' ? 'admin' : 'customer',
+              role: firebaseUser.email === 'mkmznup12@gmail.com' ? 'admin' : 'user',
               createdAt: new Date().toISOString(),
             };
             // We don't save isAdmin to Firestore, it's derived from role

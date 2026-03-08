@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Star, ArrowLeft, User, Flame, ZoomIn, Edit, ChevronLeft, ChevronRight, Zap, Send } from 'lucide-react';
+import { ShoppingCart, Heart, Star, ArrowLeft, User, Flame, ZoomIn, Edit, ChevronLeft, ChevronRight, Zap, Send, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
@@ -141,11 +141,7 @@ export default function ProductDetails() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="rounded-full h-12 w-12 border-b-2 border-white"
-        />
+        <Loader2 className="w-12 h-12 text-[#CCFF00] animate-spin" />
       </div>
     );
   }
@@ -449,6 +445,29 @@ export default function ProductDetails() {
             </motion.div>
           </div>
         </div>
+
+        {/* Product Video */}
+        {product.videoUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="bg-[#111] rounded-[2rem] border-2 border-white/10 overflow-hidden mb-12 shadow-[8px_8px_0px_rgba(255,255,255,0.05)]"
+          >
+             <div className="p-8 lg:p-12">
+                <h2 className="text-4xl font-black font-display text-white mb-8 uppercase tracking-tighter text-3d">Product Video 🎥</h2>
+                <div className="aspect-video rounded-2xl overflow-hidden border-2 border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                  <video 
+                    src={product.videoUrl} 
+                    controls 
+                    className="w-full h-full object-cover"
+                    poster={product.imageUrl}
+                  />
+                </div>
+             </div>
+          </motion.div>
+        )}
 
         {/* Customer Reviews Section */}
         <motion.div 

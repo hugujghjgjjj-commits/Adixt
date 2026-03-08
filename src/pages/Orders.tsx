@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, Clock, CheckCircle, Repeat } from 'lucide-react';
+import { Package, Clock, CheckCircle, Repeat, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { motion } from 'motion/react';
@@ -68,11 +68,7 @@ export default function Orders() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="rounded-full h-12 w-12 border-b-2 border-white"
-        />
+        <Loader2 className="w-12 h-12 text-[#CCFF00] animate-spin" />
       </div>
     );
   }

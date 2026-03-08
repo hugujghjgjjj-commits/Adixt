@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
-import { Shield, Loader2, User as UserIcon } from 'lucide-react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Shield, Loader2, User as UserIcon, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -11,15 +11,17 @@ interface UserData {
   uid: string;
   name: string;
   email: string;
-  role: 'admin' | 'customer';
+  role: 'admin' | 'user';
   createdAt: string;
 }
 
 export default function AdminUsers() {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchUsers = async () => {
     try {
@@ -44,23 +46,35 @@ export default function AdminUsers() {
   }, [authLoading, user]);
 
   const toggleAdminStatus = async (userId: string, currentRole: string) => {
-    if (userId === user?.uid) {
-      toast.error('You cannot change your own admin status');
+    if (userId === user?.uid && currentRole !== 'admin') {
+      toast.error('You cannot promote yourself');
       return;
+    }
+
+    if (userId === user?.uid) {
+      if (!window.confirm('Are you sure you want to demote yourself to a Normal User? You will lose access to the Admin Dashboard.')) {
+        return;
+      }
     }
 
     setProcessingId(userId);
 
     try {
       const userRef = doc(db, 'users', userId);
-      const newRole = currentRole === 'admin' ? 'customer' : 'admin';
+      const newRole = currentRole === 'admin' ? 'user' : 'admin';
       
       await updateDoc(userRef, {
         role: newRole
       });
 
       toast.success('User admin status updated');
-      fetchUsers();
+      
+      if (userId === user?.uid) {
+        // If the user demoted themselves, redirect to home
+        navigate('/');
+      } else {
+        fetchUsers();
+      }
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast.error('An error occurred while updating user');
@@ -78,16 +92,13 @@ export default function AdminUsers() {
   }
 
   if (!user?.isAdmin) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider text-3d">Access Denied</h1>
-        <p className="text-gray-400 font-mono mb-8">You need host privileges to access this page.</p>
-        <Link to="/" className="bg-[#CCFF00] text-black font-black font-display uppercase tracking-wider px-8 py-3 rounded-full hover:bg-white transition-colors">
-          Return Home
-        </Link>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
+
+  const filteredUsers = users.filter(u => 
+    u.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -96,6 +107,19 @@ export default function AdminUsers() {
         <Link to="/admin" className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-full font-mono text-sm transition-colors border border-white/20">
           Back to Dashboard
         </Link>
+      </div>
+
+      <div className="mb-8 relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-gray-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search users by email or name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-4 bg-[#111] border-2 border-white/10 rounded-2xl text-white focus:outline-none focus:border-[#CCFF00] font-mono transition-colors"
+        />
       </div>
 
       {loading ? (
@@ -117,7 +141,7 @@ export default function AdminUsers() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u, index) => (
+                {filteredUsers.map((u, index) => (
                   <motion.tr 
                     key={u.uid}
                     initial={{ opacity: 0, y: 10 }}
@@ -152,28 +176,33 @@ export default function AdminUsers() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => toggleAdminStatus(u.uid, u.role)}
-                          disabled={u.uid === user?.uid || !!processingId}
+                          disabled={!!processingId}
                           className={`px-5 py-2.5 rounded-full font-mono text-xs font-bold uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
-                            u.uid === user?.uid 
-                              ? 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
-                              : u.role === 'admin'
-                                ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 hover:border-red-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]'
-                                : 'bg-[#CCFF00]/10 text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black border border-[#CCFF00]/20 hover:border-[#CCFF00] hover:shadow-[0_0_20px_rgba(204,255,0,0.3)]'
+                            u.role === 'admin'
+                              ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 hover:border-red-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                              : 'bg-[#CCFF00]/10 text-[#CCFF00] hover:bg-[#CCFF00] hover:text-black border border-[#CCFF00]/20 hover:border-[#CCFF00] hover:shadow-[0_0_20px_rgba(204,255,0,0.3)]'
                           } ${processingId ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           {processingId === u.uid ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : null}
-                          {u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
+                          {u.uid === user?.uid ? 'Demote Self' : u.role === 'admin' ? 'Revoke Admin' : 'Make Admin'}
                         </button>
                       </div>
                     </td>
                   </motion.tr>
                 ))}
+                {filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-gray-400 font-mono">
+                      No users found matching your search.
+                    </td>
+                  </tr>
+                )}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
-        </div>
         </div>
       )}
     </div>

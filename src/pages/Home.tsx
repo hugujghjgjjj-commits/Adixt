@@ -151,14 +151,16 @@ export default function Home() {
               <p className="text-xl text-gray-400 mb-8 font-medium max-w-md">
                 No cap, these deals are insane. Upgrade your aesthetic without breaking the bank. 💸
               </p>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="bg-[#CCFF00] text-black px-10 py-4 rounded-full font-display font-black text-xl hover:scale-105 glow-button transition-all duration-300 uppercase tracking-wide flex items-center gap-2 text-3d-primary"
+                className="bg-[#CCFF00] text-black px-10 py-4 rounded-full font-display font-black text-xl glow-button transition-all duration-300 uppercase tracking-wide flex items-center gap-2 text-3d-primary"
               >
                 Shop The Drop <Zap className="w-5 h-5 fill-black" />
-              </button>
+              </motion.button>
             </div>
             <div className="flex-1 grid grid-cols-2 gap-4 relative [perspective:1000px]">
               <div className="absolute inset-0 bg-[#CCFF00] blur-[100px] opacity-20 rounded-full mix-blend-screen"></div>

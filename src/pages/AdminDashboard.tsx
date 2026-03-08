@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Users, Loader2, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
@@ -56,15 +56,7 @@ export default function AdminDashboard() {
   }
 
   if (!user?.isAdmin) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-4xl font-black font-display text-white mb-4 uppercase tracking-wider text-3d">Access Denied</h1>
-        <p className="text-gray-400 font-mono mb-8">You need host privileges to access this page.</p>
-        <Link to="/" className="bg-[#CCFF00] text-black font-black font-display uppercase tracking-wider px-8 py-3 rounded-full hover:bg-white transition-colors">
-          Return Home
-        </Link>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   return (

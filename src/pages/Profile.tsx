@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'motion/react';
-import { User, Mail, Calendar, Package, Shield, LogOut, Key } from 'lucide-react';
+import { User, Mail, Calendar, Package, Shield, LogOut, Key, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
