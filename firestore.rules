@@ -107,16 +107,30 @@ service cloud.firestore {
     }
 
     function isValidProduct(data) {
-      let allowedFields = ['name', 'description', 'price', 'imageUrl', 'category', 'stock', 'createdAt'];
-      return hasRequiredFields(allowedFields) &&
+      let allowedFields = ['name', 'description', 'price', 'originalPrice', 'discountPercentage', 'imageUrl', 'images', 'category', 'stock', 'createdAt'];
+      return hasRequiredFields(['name', 'description', 'price', 'imageUrl', 'category', 'stock', 'createdAt']) &&
              hasOnlyAllowedFields(allowedFields) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.description is string && data.description.size() > 0 && data.description.size() < 5000 &&
              data.price is number && data.price >= 0 &&
+             (!('originalPrice' in data) || (data.originalPrice is number && data.originalPrice >= 0)) &&
+             (!('discountPercentage' in data) || (data.discountPercentage is number && data.discountPercentage >= 0 && data.discountPercentage <= 100)) &&
              isValidUrl(data.imageUrl) && data.imageUrl.size() < 1000 &&
+             (!('images' in data) || (data.images is list && data.images.size() <= 10)) &&
              data.category is string && data.category.size() > 0 && data.category.size() < 100 &&
              data.stock is number && data.stock >= 0 &&
              isValidDateString(data.createdAt);
+    }
+
+    function isValidReview(data) {
+      let allowedFields = ['userId', 'userName', 'rating', 'comment', 'createdAt'];
+      return hasRequiredFields(allowedFields) &&
+             hasOnlyAllowedFields(allowedFields) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() < 100 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() > 0 && data.comment.size() < 2000 &&
+             (data.createdAt is timestamp || isValidDateString(data.createdAt));
     }
 
     function isValidOrder(data) {
@@ -193,6 +207,16 @@ service cloud.firestore {
                        isValidProduct(request.resource.data) &&
                        request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if isAdmin();
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidReview(request.resource.data);
+        allow update: if isAuthenticated() && 
+                         isValidReview(request.resource.data) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      }
     }
 
     match /orders/{orderId} {

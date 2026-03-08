@@ -142,7 +142,7 @@ export default function Home() {
               <div className="inline-block bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
                 <span className="text-sm font-mono text-[#CCFF00] font-bold uppercase tracking-wider">New Arrivals ✦</span>
               </div>
-              <h1 className="text-6xl md:text-8xl font-black font-display tracking-tighter mb-6 leading-[0.85] uppercase glow-text">
+              <h1 className="text-6xl md:text-8xl font-black font-display tracking-tighter mb-6 leading-[0.85] uppercase glow-text text-3d">
                 Cop The <br/>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#CCFF00] to-[#00FFFF]">
                   Latest Heat
@@ -344,7 +344,7 @@ export default function Home() {
                   
                   <div className="p-4 flex flex-col flex-1 bg-gradient-to-b from-transparent to-black/50 [transform:translateZ(20px)]">
                     <Link to={`/product/${product.id}`}>
-                      <h3 className="text-base font-display font-bold text-gray-100 mb-2 line-clamp-2 group-hover:text-[#CCFF00] transition-colors leading-tight">
+                      <h3 className="text-base font-display font-bold text-gray-100 mb-2 line-clamp-2 group-hover:text-[#CCFF00] transition-colors leading-tight text-3d">
                         {product.name}
                       </h3>
                     </Link>

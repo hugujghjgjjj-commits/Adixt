@@ -48,10 +48,26 @@
           "type": "number",
           "description": "The product's price"
         },
+        "originalPrice": {
+          "type": "number",
+          "description": "The product's original price before discount"
+        },
+        "discountPercentage": {
+          "type": "number",
+          "description": "The discount percentage"
+        },
         "imageUrl": {
           "type": "string",
           "format": "uri",
-          "description": "The product's image URL"
+          "description": "The product's main image URL"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "Additional product images"
         },
         "category": {
           "type": "string",
@@ -68,6 +84,35 @@
         }
       },
       "required": ["name", "description", "price", "imageUrl", "category", "stock", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A product review",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who wrote the review"
+        },
+        "userName": {
+          "type": "string",
+          "description": "The name of the user who wrote the review"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating given (1-5)"
+        },
+        "comment": {
+          "type": "string",
+          "description": "The review comment"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the review was created"
+        }
+      },
+      "required": ["userId", "userName", "rating", "comment", "createdAt"]
     },
     "Order": {
       "title": "Order",
@@ -157,6 +202,10 @@
     "products/{productId}": {
       "schema": { "$ref": "#/entities/Product" },
       "description": "E-commerce products"
+    },
+    "products/{productId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Product reviews"
     },
     "orders/{orderId}": {
       "schema": { "$ref": "#/entities/Order" },

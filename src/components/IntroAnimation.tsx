@@ -92,17 +92,6 @@ function IntroContent({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-function LoadingBar() {
-  return (
-    <motion.div 
-      initial={{ width: "0%" }}
-      animate={{ width: "100%" }}
-      transition={{ duration: 4, ease: "easeInOut" }}
-      className="h-1 bg-[#CCFF00] shadow-[0_0_20px_#CCFF00]"
-    />
-  );
-}
-
 export default function IntroAnimation() {
   const [show, setShow] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -135,16 +124,6 @@ export default function IntroAnimation() {
           <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
             <IntroContent onComplete={handleComplete} />
           </Canvas>
-          
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-64">
-            <div className="flex justify-between text-[#CCFF00] font-mono text-xs mb-2">
-              <span>INITIALIZING</span>
-              <span>100%</span>
-            </div>
-            <div className="w-full bg-white/10 rounded-full overflow-hidden">
-              <LoadingBar />
-            </div>
-          </div>
         </motion.div>
       )}
     </AnimatePresence>

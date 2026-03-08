@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Star, ArrowLeft, User, Flame, ZoomIn, Edit, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
+import { ShoppingCart, Heart, Star, ArrowLeft, User, Flame, ZoomIn, Edit, ChevronLeft, ChevronRight, Zap, Send } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { motion, AnimatePresence } from 'motion/react';
 import TiltCard from '../components/TiltCard';
-import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,10 @@ export default function ProductDetails() {
   const { addToRecentlyViewed } = useRecentlyViewed();
 
   const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [userRating, setUserRating] = useState(5);
+  const [userComment, setUserComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchProductDetails = async () => {
@@ -50,6 +55,17 @@ export default function ProductDetails() {
             .filter(p => p.id !== id)
             .slice(0, 4);
           setRecommendedProducts(recData);
+
+          // Fetch reviews
+          const reviewsQ = query(
+            collection(db, 'products', id, 'reviews'),
+            orderBy('createdAt', 'desc'),
+            limit(10)
+          );
+          const reviewsSnapshot = await getDocs(reviewsQ);
+          const reviewsData = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setReviews(reviewsData);
+
         } else {
           setProduct({ error: true });
         }
@@ -81,6 +97,47 @@ export default function ProductDetails() {
     setTimeout(() => setIsAdding(false), 600);
   };
 
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error('You need to be logged in to review.');
+      navigate('/login');
+      return;
+    }
+    if (!userComment.trim()) {
+      toast.error('Please write a comment.');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const reviewData = {
+        userId: user.uid,
+        userName: user.name || 'Anonymous',
+        rating: userRating,
+        comment: userComment,
+        createdAt: serverTimestamp() // Use serverTimestamp for consistency
+      };
+
+      await addDoc(collection(db, 'products', id!, 'reviews'), reviewData);
+      
+      // Optimistically update UI
+      setReviews([
+        { ...reviewData, id: Date.now().toString(), createdAt: { seconds: Date.now() / 1000 } }, 
+        ...reviews
+      ]);
+      
+      setUserComment('');
+      setUserRating(5);
+      toast.success('Review submitted!');
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Failed to submit review.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -105,13 +162,6 @@ export default function ProductDetails() {
   }
 
   const isWishlisted = wishlist.some(w => w.productId === product.id);
-
-  // Mock reviews data
-  const mockReviews = [
-    { id: 1, user: 'Alex M.', rating: 5, date: '2 days ago', comment: 'Absolutely love this product! The quality is amazing and it arrived faster than expected.' },
-    { id: 2, user: 'Sarah J.', rating: 4, date: '1 week ago', comment: 'Good value for the price. Looks exactly like the pictures.' },
-    { id: 3, user: 'Michael T.', rating: 5, date: '2 weeks ago', comment: 'Highly recommend! Will definitely be buying more from this store.' },
-  ];
 
   // Parse images
   let images: string[] = [];
@@ -275,19 +325,19 @@ export default function ProductDetails() {
                 )}
               </div>
               
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black font-display text-white mb-4 tracking-tighter leading-tight uppercase">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black font-display text-white mb-4 tracking-tighter leading-tight uppercase text-3d">
                 {product.name}
               </h1>
               
               <div className="flex items-center mb-8 text-sm font-mono text-gray-400">
                 <div className="flex items-center bg-white/5 px-3 py-1 rounded-full border border-white/10">
                   <Star className="h-4 w-4 text-[#CCFF00] fill-[#CCFF00]" />
-                  <span className="ml-2 text-white font-bold">{product.rating}</span>
+                  <span className="ml-2 text-white font-bold">{product.rating || 'New'}</span>
                 </div>
                 <span className="mx-3 text-white/20">|</span>
-                <span className="uppercase tracking-wider">{product.reviewsCount} reviews</span>
+                <span className="uppercase tracking-wider">{reviews.length} reviews</span>
                 <span className="mx-3 text-white/20">|</span>
-                <span className="uppercase tracking-wider">{product.boughtCount} copped</span>
+                <span className="uppercase tracking-wider">{product.boughtCount || 0} copped</span>
               </div>
 
               <div className="flex items-end gap-4 mb-8">
@@ -302,7 +352,7 @@ export default function ProductDetails() {
               </div>
 
               <div className="text-sm font-mono font-bold text-gray-400 mb-8 uppercase tracking-widest">
-                {product.colorsCount} colors · {product.sizesCount} sizes
+                {product.colorsCount || 1} colors · {product.sizesCount || 'S-XL'} sizes
               </div>
 
               <p className="text-gray-300 text-lg mb-10 leading-relaxed font-medium">
@@ -410,53 +460,108 @@ export default function ProductDetails() {
         >
           <h2 className="text-4xl font-black font-display text-white mb-8 uppercase tracking-tighter">The Vibe Check</h2>
           
-          <div className="flex items-center mb-10">
-            <div className="text-6xl font-black font-display text-[#CCFF00] mr-6">{product.rating}</div>
-            <div>
-              <div className="flex items-center mb-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star 
-                    key={star} 
-                    className={`h-6 w-6 ${star <= Math.round(product.rating) ? 'text-[#CCFF00] fill-[#CCFF00]' : 'text-gray-700'}`} 
-                  />
-                ))}
-              </div>
-              <p className="text-gray-400 font-mono text-sm uppercase tracking-widest">Based on {product.reviewsCount} reviews</p>
-            </div>
-          </div>
-
-          <div className="space-y-8">
-            {mockReviews.map((review, index) => (
-              <motion.div 
-                key={review.id} 
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="border-t-2 border-white/10 pt-8"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-[#CCFF00] p-3 rounded-xl shadow-[0_0_10px_rgba(204,255,0,0.3)]">
-                      <User className="h-6 w-6 text-black" />
-                    </div>
-                    <div>
-                      <p className="text-white font-bold font-display text-lg tracking-wide">{review.user}</p>
-                      <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">{review.date}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+          <div className="flex flex-col md:flex-row gap-12">
+            <div className="flex-1">
+              <div className="flex items-center mb-10">
+                <div className="text-6xl font-black font-display text-[#CCFF00] mr-6">{product.rating || 'N/A'}</div>
+                <div>
+                  <div className="flex items-center mb-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <Star 
                         key={star} 
-                        className={`h-4 w-4 ${star <= review.rating ? 'text-[#CCFF00] fill-[#CCFF00]' : 'text-gray-700'}`} 
+                        className={`h-6 w-6 ${star <= Math.round(product.rating || 0) ? 'text-[#CCFF00] fill-[#CCFF00]' : 'text-gray-700'}`} 
                       />
                     ))}
                   </div>
+                  <p className="text-gray-400 font-mono text-sm uppercase tracking-widest">Based on {reviews.length} reviews</p>
                 </div>
-                <p className="text-gray-300 mt-4 text-lg font-medium leading-relaxed">{review.comment}</p>
-              </motion.div>
-            ))}
+              </div>
+
+              {/* Write Review Form */}
+              {user ? (
+                <form onSubmit={handleSubmitReview} className="mb-12 bg-white/5 p-6 rounded-2xl border border-white/10">
+                  <h3 className="text-xl font-bold font-display text-white mb-4 uppercase">Leave a Review</h3>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm font-mono text-gray-400 uppercase">Rating:</span>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setUserRating(star)}
+                        className="focus:outline-none transition-transform hover:scale-110"
+                      >
+                        <Star 
+                          className={`h-6 w-6 ${star <= userRating ? 'text-[#CCFF00] fill-[#CCFF00]' : 'text-gray-600'}`} 
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    value={userComment}
+                    onChange={(e) => setUserComment(e.target.value)}
+                    placeholder="Tell us what you think..."
+                    className="w-full bg-black border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-[#CCFF00] transition-colors font-mono text-sm mb-4 resize-none"
+                    rows={3}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="bg-white text-black font-bold font-mono uppercase tracking-wider px-6 py-2 rounded-full hover:bg-[#CCFF00] transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmittingReview ? 'Posting...' : <><Send className="w-4 h-4" /> Post Review</>}
+                  </button>
+                </form>
+              ) : (
+                <div className="mb-12 bg-white/5 p-6 rounded-2xl border border-white/10 text-center">
+                  <p className="text-gray-400 font-mono mb-4">Log in to leave a review.</p>
+                  <Link to="/login" className="inline-block bg-[#CCFF00] text-black font-bold font-mono uppercase tracking-wider px-6 py-2 rounded-full hover:bg-white transition-colors">
+                    Log In
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-8 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+              {reviews.length > 0 ? (
+                reviews.map((review, index) => (
+                  <motion.div 
+                    key={review.id} 
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="border-b border-white/10 pb-8 last:border-0"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-[#CCFF00] p-3 rounded-xl shadow-[0_0_10px_rgba(204,255,0,0.3)]">
+                          <User className="h-6 w-6 text-black" />
+                        </div>
+                        <div>
+                          <p className="text-white font-bold font-display text-lg tracking-wide">{review.userName}</p>
+                          <p className="text-gray-500 font-mono text-xs uppercase tracking-widest">
+                            {review.createdAt?.seconds ? new Date(review.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star 
+                            key={star} 
+                            className={`h-4 w-4 ${star <= review.rating ? 'text-[#CCFF00] fill-[#CCFF00]' : 'text-gray-700'}`} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-gray-300 mt-4 text-lg font-medium leading-relaxed">{review.comment}</p>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 font-mono py-10">
+                  No reviews yet. Be the first to vibe check!
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -482,7 +587,7 @@ export default function ProductDetails() {
                 >
                   <div className="w-full aspect-square bg-[#0a0a0a] rounded-2xl mb-4 overflow-hidden">
                     <img 
-                      src={p.image_url} 
+                      src={p.imageUrl || p.image_url} 
                       alt={p.name} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       referrerPolicy="no-referrer"

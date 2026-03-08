@@ -40,12 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               name: firebaseUser.displayName || '',
-              role: 'customer',
+              role: firebaseUser.email === 'mkmznup12@gmail.com' ? 'admin' : 'customer',
               createdAt: new Date().toISOString(),
             };
             // We don't save isAdmin to Firestore, it's derived from role
             await setDoc(userDocRef, newUser);
-            setUser({ ...newUser, isAdmin: false });
+            setUser({ ...newUser, isAdmin: newUser.role === 'admin' });
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
