@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
-import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, getMultiFactorResolver, MultiFactorError } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { Loader2 } from 'lucide-react';
 
@@ -10,8 +10,9 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'email' | 'otp'>('email');
+  const [password, setPassword] = useState('');
+  const [mfaResolver, setMfaResolver] = useState<any>(null);
+  const [mfaCode, setMfaCode] = useState('');
   const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
@@ -24,6 +25,12 @@ export default function Login() {
       navigate('/');
     } catch (err: any) {
       console.error(err);
+      if (err.code === 'auth/multi-factor-auth-required') {
+        const resolver = getMultiFactorResolver(auth, err);
+        setMfaResolver(resolver);
+        setIsLoading(false);
+        return;
+      }
       let errorMsg = 'Failed to sign in with Google.';
       if (err.code === 'auth/popup-closed-by-user') {
         errorMsg = 'Sign in cancelled.';
@@ -35,72 +42,59 @@ export default function Login() {
     }
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      setError('Please enter your email');
-      return;
-    }
-    setError('');
     setIsLoading(true);
     try {
-      const res = await fetch('/api/otp/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
-      
-      toast.success('OTP sent to your email!');
-      setStep('otp');
+      const cred = await mfaResolver.resolveSignIn(
+        mfaResolver.hints[0].uid,
+        mfaCode
+      );
+      toast.success('Welcome back!');
+      navigate('/');
     } catch (err: any) {
       console.error(err);
-      setError(err.message);
-      toast.error(err.message);
+      setError('Invalid MFA code.');
+      toast.error('Invalid MFA code.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp || otp.length < 6) {
-      setError('Please enter a valid 6-digit OTP');
+    if (!email || !password) {
+      setError('Please enter your email and password');
       return;
     }
     setError('');
     setIsLoading(true);
     try {
-      const res = await fetch('/api/otp/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to verify OTP');
-      
-      toast.success('OTP verified successfully!');
-      
-      // After successful OTP verification, log the user into Firebase Auth
-      // We use a deterministic strong password for OTP users since Firebase requires a password
-      const otpUserPassword = `OTP_VERIFIED_${email}_SECURE_PASS_2026!`;
-      try {
-        await signInWithEmailAndPassword(auth, email, otpUserPassword);
-      } catch (signInErr: any) {
-        // If user doesn't exist, create them
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-          await createUserWithEmailAndPassword(auth, email, otpUserPassword);
-        } else {
-          throw signInErr;
-        }
-      }
-      
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success('Welcome back!');
       navigate('/');
     } catch (err: any) {
       console.error(err);
-      setError(err.message);
-      toast.error(err.message);
+      let errorMsg = 'An error occurred during login.';
+      switch (err.code) {
+        case 'auth/user-not-found':
+          errorMsg = 'No account found with this email.';
+          break;
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          errorMsg = 'Incorrect email or password.';
+          break;
+        case 'auth/invalid-email':
+          errorMsg = 'Invalid email address.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMsg = 'Email/password login is not enabled. Please contact support.';
+          break;
+        default:
+          errorMsg = 'Invalid email or password.';
+      }
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +120,7 @@ export default function Login() {
             transition={{ delay: 0.2 }}
             className="mt-2 text-center text-4xl font-black font-display text-white tracking-tighter uppercase text-3d"
           >
-            {step === 'email' ? 'Welcome Back' : 'Enter OTP'}
+            Welcome Back
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -134,16 +128,10 @@ export default function Login() {
             transition={{ delay: 0.3 }}
             className="mt-4 text-center text-sm font-mono text-gray-400"
           >
-            {step === 'email' ? (
-              <>
-                Or{' '}
-                <Link to="/register" className="font-bold text-[#CCFF00] hover:text-white transition-colors underline decoration-2 underline-offset-4">
-                  create a new account
-                </Link>
-              </>
-            ) : (
-              `We sent a 6-digit code to ${email}`
-            )}
+            Or{' '}
+            <Link to="/register" className="font-bold text-[#CCFF00] hover:text-white transition-colors underline decoration-2 underline-offset-4">
+              create a new account
+            </Link>
           </motion.p>
         </div>
 
@@ -158,83 +146,86 @@ export default function Login() {
             </motion.div>
           )}
 
-          <AnimatePresence mode="wait">
-            {step === 'email' ? (
-              <motion.form 
-                key="email-form"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                onSubmit={handleSendOtp} 
-                className="space-y-4"
+          {mfaResolver ? (
+            <motion.form 
+              key="mfa-form"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              onSubmit={handleMfaSubmit} 
+              className="space-y-4"
+            >
+              <div>
+                <label htmlFor="mfaCode" className="sr-only">MFA Code</label>
+                <input
+                  id="mfaCode"
+                  name="mfaCode"
+                  type="text"
+                  required
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value)}
+                  className="appearance-none rounded-xl relative block w-full px-4 py-3 border-2 border-white/10 bg-white/5 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#CCFF00] focus:border-transparent focus:z-10 sm:text-sm font-mono transition-all"
+                  placeholder="Enter MFA Code"
+                />
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-black rounded-xl text-black bg-[#CCFF00] hover:bg-white transition-colors uppercase tracking-wider glow-button disabled:opacity-50"
               >
-                <div>
-                  <label htmlFor="email" className="sr-only">Email address</label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none rounded-xl relative block w-full px-4 py-3 border-2 border-white/10 bg-white/5 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#CCFF00] focus:border-transparent focus:z-10 sm:text-sm font-mono transition-all"
-                    placeholder="Email address"
-                  />
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-black rounded-xl text-black bg-[#CCFF00] hover:bg-white transition-colors uppercase tracking-wider glow-button disabled:opacity-50"
-                >
-                  {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : 'Send OTP'}
-                </motion.button>
-              </motion.form>
-            ) : (
-              <motion.form 
-                key="otp-form"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                onSubmit={handleVerifyOtp} 
-                className="space-y-4"
+                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</> : 'Verify MFA Code'}
+              </motion.button>
+            </motion.form>
+          ) : (
+            <motion.form 
+              key="login-form"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              onSubmit={handleLogin} 
+              className="space-y-4"
+            >
+              <div>
+                <label htmlFor="email" className="sr-only">Email address</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="appearance-none rounded-xl relative block w-full px-4 py-3 border-2 border-white/10 bg-white/5 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#CCFF00] focus:border-transparent focus:z-10 sm:text-sm font-mono transition-all"
+                  placeholder="Email address"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="sr-only">Password</label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="appearance-none rounded-xl relative block w-full px-4 py-3 border-2 border-white/10 bg-white/5 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#CCFF00] focus:border-transparent focus:z-10 sm:text-sm font-mono transition-all"
+                  placeholder="Password"
+                />
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-black rounded-xl text-black bg-[#CCFF00] hover:bg-white transition-colors uppercase tracking-wider glow-button disabled:opacity-50"
               >
-                <div>
-                  <label htmlFor="otp" className="sr-only">OTP Code</label>
-                  <input
-                    id="otp"
-                    name="otp"
-                    type="text"
-                    required
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    className="appearance-none rounded-xl relative block w-full px-4 py-3 border-2 border-white/10 bg-white/5 placeholder-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-[#CCFF00] focus:border-transparent focus:z-10 sm:text-sm font-mono text-center tracking-[0.5em] text-2xl transition-all"
-                    placeholder="000000"
-                  />
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-black rounded-xl text-black bg-[#CCFF00] hover:bg-white transition-colors uppercase tracking-wider glow-button disabled:opacity-50"
-                >
-                  {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</> : 'Verify & Login'}
-                </motion.button>
-                <button
-                  type="button"
-                  onClick={() => setStep('email')}
-                  className="w-full text-center text-sm font-mono text-gray-400 hover:text-white transition-colors mt-4"
-                >
-                  Change Email
-                </button>
-              </motion.form>
-            )}
-          </AnimatePresence>
+                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Logging in...</> : 'Login'}
+              </motion.button>
+            </motion.form>
+          )}
 
-          {step === 'email' && (
+          {!mfaResolver && (
             <>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

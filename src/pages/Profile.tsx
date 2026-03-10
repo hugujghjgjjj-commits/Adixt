@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -27,12 +28,14 @@ export default function Profile() {
           orderBy('createdAt', 'desc'),
           limit(3)
         );
-        const querySnapshot = await getDocs(q);
-        const ordersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setOrders(ordersData);
+        const querySnapshot = await getDocs(q).catch(err => handleFirestoreError(err, OperationType.LIST, 'orders'));
+        if (querySnapshot) {
+          const ordersData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setOrders(ordersData);
+        }
       } catch (error) {
         console.error("Error fetching orders:", error);
         setOrders([]);

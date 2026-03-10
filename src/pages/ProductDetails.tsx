@@ -10,6 +10,7 @@ import TiltCard from '../components/TiltCard';
 import { doc, getDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import toast from 'react-hot-toast';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +37,8 @@ export default function ProductDetails() {
       try {
         if (!id) return;
         const docRef = doc(db, 'products', id);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDoc(docRef).catch(err => handleFirestoreError(err, OperationType.GET, `products/${id}`));
+        if (!docSnap) return;
 
         if (docSnap.exists()) {
           const data = { id: docSnap.id, ...docSnap.data() } as any;
@@ -49,12 +51,14 @@ export default function ProductDetails() {
             where('category', '==', data.category),
             limit(5)
           );
-          const recSnapshot = await getDocs(q);
-          const recData = recSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(p => p.id !== id)
-            .slice(0, 4);
-          setRecommendedProducts(recData);
+          const recSnapshot = await getDocs(q).catch(err => handleFirestoreError(err, OperationType.LIST, 'products'));
+          if (recSnapshot) {
+            const recData = recSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter(p => p.id !== id)
+              .slice(0, 4);
+            setRecommendedProducts(recData);
+          }
 
           // Fetch reviews
           const reviewsQ = query(
@@ -62,9 +66,11 @@ export default function ProductDetails() {
             orderBy('createdAt', 'desc'),
             limit(10)
           );
-          const reviewsSnapshot = await getDocs(reviewsQ);
-          const reviewsData = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setReviews(reviewsData);
+          const reviewsSnapshot = await getDocs(reviewsQ).catch(err => handleFirestoreError(err, OperationType.LIST, `products/${id}/reviews`));
+          if (reviewsSnapshot) {
+            const reviewsData = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setReviews(reviewsData);
+          }
 
         } else {
           setProduct({ error: true });
@@ -119,7 +125,7 @@ export default function ProductDetails() {
         createdAt: serverTimestamp() // Use serverTimestamp for consistency
       };
 
-      await addDoc(collection(db, 'products', id!, 'reviews'), reviewData);
+      await addDoc(collection(db, 'products', id!, 'reviews'), reviewData).catch(err => handleFirestoreError(err, OperationType.CREATE, `products/${id}/reviews`));
       
       // Optimistically update UI
       setReviews([

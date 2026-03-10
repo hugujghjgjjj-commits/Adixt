@@ -192,6 +192,31 @@
         }
       },
       "required": ["productId", "addedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "An admin notification",
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "The notification message"
+        },
+        "orderId": {
+          "type": "string",
+          "description": "The ID of the related order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the notification was created"
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether the notification has been read"
+        }
+      },
+      "required": ["message", "orderId", "createdAt", "read"]
     }
   },
   "firestore": {
@@ -218,6 +243,10 @@
     "users/{userId}/wishlist/{wishlistItemId}": {
       "schema": { "$ref": "#/entities/WishlistItem" },
       "description": "User's wishlist items"
+    },
+    "notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Admin notifications"
     }
   }
 }

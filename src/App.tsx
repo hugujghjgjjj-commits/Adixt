@@ -20,7 +20,6 @@ import AdminProductForm from './pages/AdminProductForm';
 import AdminUsers from './pages/AdminUsers';
 import Profile from './pages/Profile';
 import FlyToCart from './components/FlyToCart';
-import IntroAnimation from './components/IntroAnimation';
 import ScrollToTop from './components/ScrollToTop';
 
 function AnimatedRoutes() {
@@ -68,7 +67,6 @@ export default function App() {
         <WishlistProvider>
           <RecentlyViewedProvider>
             <Router>
-              <IntroAnimation />
               <ScrollToTop />
               <div className="min-h-screen bg-[#000000] flex flex-col text-white selection:bg-[#CCFF00] selection:text-black">
                 <Toaster 

@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 import { collection, doc, onSnapshot, setDoc, deleteDoc, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 interface CartItem {
   id: string;
@@ -53,8 +54,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const data = docSnapshot.data();
           // Fetch product details
           const productRef = doc(db, 'products', data.productId);
-          const productSnap = await getDoc(productRef);
-          if (productSnap.exists()) {
+          const productSnap = await getDoc(productRef).catch(err => handleFirestoreError(err, OperationType.GET, `products/${data.productId}`));
+          if (productSnap && productSnap.exists()) {
             const productData = productSnap.data();
             cartItems.push({
               id: docSnapshot.id,
@@ -103,7 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 }
               }
               if (hasValidItems) {
-                await batch.commit();
+                await batch.commit().catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/cart`));
                 toast.success('Guest cart synced with your account');
               }
               localStorage.removeItem('guest_cart');
@@ -152,14 +153,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const cartItemRef = doc(db, 'users', user.uid, 'cart', existingItem.id);
         await updateDoc(cartItemRef, {
           quantity: existingItem.quantity + quantity
-        });
+        }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}/cart/${existingItem.id}`));
       } else {
         const cartItemRef = doc(collection(db, 'users', user.uid, 'cart'));
         await setDoc(cartItemRef, {
           productId,
           quantity,
           addedAt: new Date().toISOString()
-        });
+        }).catch(err => handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}/cart/${cartItemRef.id}`));
       }
       toast.success('Added to cart');
     } catch (error) {
@@ -184,7 +185,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     try {
       const cartItemRef = doc(db, 'users', user.uid, 'cart', cartId);
-      await updateDoc(cartItemRef, { quantity });
+      await updateDoc(cartItemRef, { quantity }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}/cart/${cartId}`));
     } catch (error) {
       console.error('Failed to update quantity', error);
       toast.error('Failed to update quantity');
@@ -202,7 +203,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     try {
       const cartItemRef = doc(db, 'users', user.uid, 'cart', cartId);
-      await deleteDoc(cartItemRef);
+      await deleteDoc(cartItemRef).catch(err => handleFirestoreError(err, OperationType.DELETE, `users/${user.uid}/cart/${cartId}`));
       toast.success('Removed from cart');
     } catch (error) {
       console.error('Failed to remove from cart', error);
@@ -223,7 +224,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const cartItemRef = doc(db, 'users', user.uid, 'cart', item.id);
         batch.delete(cartItemRef);
       });
-      await batch.commit();
+      await batch.commit().catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}/cart`));
       toast.success('Cart cleared');
     } catch (error) {
       console.error('Failed to clear cart', error);

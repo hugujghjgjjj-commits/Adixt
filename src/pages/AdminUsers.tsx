@@ -6,6 +6,7 @@ import { Shield, Loader2, User as UserIcon, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 interface UserData {
   uid: string;
@@ -25,12 +26,14 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'users'));
-      const usersData = querySnapshot.docs.map(doc => ({
-        uid: doc.id,
-        ...doc.data()
-      })) as UserData[];
-      setUsers(usersData);
+      const querySnapshot = await getDocs(collection(db, 'users')).catch(err => handleFirestoreError(err, OperationType.LIST, 'users'));
+      if (querySnapshot) {
+        const usersData = querySnapshot.docs.map(doc => ({
+          uid: doc.id,
+          ...doc.data()
+        })) as UserData[];
+        setUsers(usersData);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('An error occurred while fetching users');
@@ -65,7 +68,7 @@ export default function AdminUsers() {
       
       await updateDoc(userRef, {
         role: newRole
-      });
+      }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `users/${userId}`));
 
       toast.success('User admin status updated');
       

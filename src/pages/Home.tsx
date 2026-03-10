@@ -9,6 +9,24 @@ import TiltCard from '../components/TiltCard';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+
+const Highlight = ({ text, highlight }: { text: string; highlight: string }) => {
+  if (!highlight.trim()) return <span>{text}</span>;
+  const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+  return (
+    <span>
+      {parts.map((part, i) => 
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <mark key={i} className="bg-[#CCFF00] text-black">{part}</mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+};
+
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +64,8 @@ export default function Home() {
           q = query(q, ...constraints);
         }
 
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(q).catch(err => handleFirestoreError(err, OperationType.LIST, 'products'));
+        if (!querySnapshot) return;
         let productsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...(doc.data() as any)
@@ -347,7 +366,7 @@ export default function Home() {
                   <div className="p-4 flex flex-col flex-1 bg-gradient-to-b from-transparent to-black/50 [transform:translateZ(20px)]">
                     <Link to={`/product/${product.id}`}>
                       <h3 className="text-base font-display font-bold text-gray-100 mb-2 line-clamp-2 group-hover:text-[#CCFF00] transition-colors leading-tight text-3d">
-                        {product.name}
+                        <Highlight text={product.name} highlight={search} />
                       </h3>
                     </Link>
 
@@ -494,7 +513,7 @@ export default function Home() {
                 </div>
                 
                 <p className="text-gray-400 text-sm mb-8 line-clamp-4">
-                  {quickViewProduct.description}
+                  <Highlight text={quickViewProduct.description} highlight={search} />
                 </p>
                 
                 <div className="mt-auto flex gap-3">

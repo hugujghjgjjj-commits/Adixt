@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart();
@@ -147,7 +148,15 @@ export default function Cart() {
           createdAt: new Date().toISOString()
         };
 
-        await addDoc(collection(db, 'orders'), orderData);
+        const orderRef = await addDoc(collection(db, 'orders'), orderData).catch(err => handleFirestoreError(err, OperationType.CREATE, 'orders'));
+        if (!orderRef) return;
+        
+        await addDoc(collection(db, 'notifications'), {
+          message: `New order placed by ${user.email || 'customer'}`,
+          orderId: orderRef.id,
+          createdAt: new Date().toISOString(),
+          read: false
+        }).catch(err => handleFirestoreError(err, OperationType.CREATE, 'notifications'));
         
         setShowPaymentModal(false);
         clearCart();

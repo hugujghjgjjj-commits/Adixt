@@ -166,6 +166,16 @@ service cloud.firestore {
              isValidDateString(data.addedAt);
     }
 
+    function isValidNotification(data) {
+      let allowedFields = ['message', 'orderId', 'createdAt', 'read'];
+      return hasRequiredFields(allowedFields) &&
+             hasOnlyAllowedFields(allowedFields) &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 1000 &&
+             data.orderId is string && data.orderId.size() > 0 && data.orderId.size() < 100 &&
+             isValidDateString(data.createdAt) &&
+             data.read is bool;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -207,6 +217,7 @@ service cloud.firestore {
 
     match /products/{productId} {
       allow read: if true; // Publicly readable
+      allow list: if true;
       allow create: if isAdmin() && isValidProduct(request.resource.data);
       allow update: if isAdmin() &&
                        isValidProduct(request.resource.data) &&
@@ -234,6 +245,13 @@ service cloud.firestore {
                        isValidOrder(request.resource.data) &&
                        request.resource.data.userId == resource.data.userId &&
                        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated(); // Allow authenticated users to create notifications
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
   }

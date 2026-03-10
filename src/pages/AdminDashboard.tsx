@@ -2,24 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Link, Navigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, Users, Loader2, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Loader2, Package, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, getDocs, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+
+interface Notification {
+  id: string;
+  message: string;
+  orderId: string;
+  createdAt: string;
+  read: boolean;
+}
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchProducts = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'products'));
-      const productsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setProducts(productsData);
+      const querySnapshot = await getDocs(collection(db, 'products')).catch(err => handleFirestoreError(err, OperationType.LIST, 'products'));
+      if (querySnapshot) {
+        const productsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setProducts(productsData);
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('An error occurred while fetching products');
@@ -31,6 +43,21 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!authLoading && user?.isAdmin) {
       fetchProducts();
+      
+      const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const notificationsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Notification));
+        setNotifications(notificationsData);
+        if (notificationsData.length > 0 && !notificationsData[0].read) {
+          toast.success(`New order: ${notificationsData[0].message}`);
+        }
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'notifications');
+      });
+      return () => unsubscribe();
     }
   }, [authLoading, user]);
 
@@ -38,7 +65,7 @@ export default function AdminDashboard() {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
 
     try {
-      await deleteDoc(doc(db, 'products', id));
+      await deleteDoc(doc(db, 'products', id)).catch(err => handleFirestoreError(err, OperationType.DELETE, `products/${id}`));
       toast.success('Product deleted successfully');
       fetchProducts();
     } catch (error) {
@@ -67,6 +94,16 @@ export default function AdminDashboard() {
           <p className="text-gray-400 font-mono">Manage your store's inventory and users.</p>
         </div>
         <div className="flex flex-wrap gap-4">
+          <div className="relative">
+            <button className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-xl transition-colors border border-white/20">
+              <Bell className="w-5 h-5" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#CCFF00] text-black text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+          </div>
           <Link to="/admin/users" className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-display font-bold transition-colors border border-white/20 flex items-center gap-2 uppercase tracking-wider">
             <Users className="w-5 h-5" />
             Manage Users
@@ -77,6 +114,19 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {notifications.length > 0 && (
+        <div className="bg-[#111] rounded-[2rem] border-2 border-[#CCFF00]/20 p-6 mb-8 shadow-[0_0_20px_rgba(204,255,0,0.1)]">
+          <h2 className="text-xl font-black font-display text-white uppercase mb-4">Recent Notifications</h2>
+          <ul className="space-y-2">
+            {notifications.slice(0, 5).map(n => (
+              <li key={n.id} className={`p-4 rounded-xl font-mono text-sm ${n.read ? 'bg-white/5 text-gray-400' : 'bg-[#CCFF00]/10 text-white'}`}>
+                {n.message} - {new Date(n.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-20">

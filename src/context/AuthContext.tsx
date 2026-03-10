@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 export interface User {
   uid: string;
@@ -29,15 +30,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+          const userDoc = await getDoc(userDocRef).catch(err => handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`));
           
-          if (userDoc.exists()) {
+          if (userDoc && userDoc.exists()) {
             const data = userDoc.data() as User;
             // Force admin for the specific email
             if (firebaseUser.email === 'mkmznup12@gmail.com' && data.role !== 'admin') {
               data.role = 'admin';
               try {
-                await setDoc(userDocRef, { ...data, role: 'admin' }, { merge: true });
+                await setDoc(userDocRef, { ...data, role: 'admin' }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `users/${firebaseUser.uid}`));
               } catch (e) {
                 console.error("Failed to update admin role", e);
               }
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               createdAt: new Date().toISOString(),
             };
             // We don't save isAdmin to Firestore, it's derived from role
-            await setDoc(userDocRef, newUser);
+            await setDoc(userDocRef, newUser).catch(err => handleFirestoreError(err, OperationType.CREATE, `users/${firebaseUser.uid}`));
             setUser({ ...newUser, isAdmin: newUser.role === 'admin' });
           }
         } catch (error) {

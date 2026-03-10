@@ -8,6 +8,7 @@ import { useNavigate, useParams, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { aiService } from '../services/aiService';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 export default function AdminProductForm() {
   const { user, loading: authLoading } = useAuth();
@@ -43,9 +44,9 @@ export default function AdminProductForm() {
       const fetchProduct = async () => {
         try {
           const docRef = doc(db, 'products', id!);
-          const docSnap = await getDoc(docRef);
+          const docSnap = await getDoc(docRef).catch(err => handleFirestoreError(err, OperationType.GET, `products/${id}`));
 
-          if (docSnap.exists()) {
+          if (docSnap && docSnap.exists()) {
             const data = docSnap.data();
             setName(data.name);
             setDescription(data.description || '');
@@ -398,7 +399,7 @@ export default function AdminProductForm() {
 
       if (isEditing) {
         const docRef = doc(db, 'products', id!);
-        await updateDoc(docRef, productData);
+        await updateDoc(docRef, productData).catch(err => handleFirestoreError(err, OperationType.UPDATE, `products/${id}`));
         toast.success('Product updated successfully!');
         navigate(`/product/${id}`);
       } else {
@@ -406,7 +407,7 @@ export default function AdminProductForm() {
         await setDoc(newDocRef, {
           ...productData,
           createdAt: new Date().toISOString()
-        });
+        }).catch(err => handleFirestoreError(err, OperationType.CREATE, `products/${newDocRef.id}`));
         toast.success('Product added successfully!');
         navigate(`/product/${newDocRef.id}`);
       }

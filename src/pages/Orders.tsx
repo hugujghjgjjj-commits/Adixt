@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { motion } from 'motion/react';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 export default function Orders() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -23,12 +24,14 @@ export default function Orders() {
             where('userId', '==', user.uid),
             orderBy('createdAt', 'desc')
           );
-          const querySnapshot = await getDocs(q);
-          const ordersData = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setOrders(ordersData);
+          const querySnapshot = await getDocs(q).catch(err => handleFirestoreError(err, OperationType.LIST, 'orders'));
+          if (querySnapshot) {
+            const ordersData = querySnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+            setOrders(ordersData);
+          }
         } catch (error) {
           console.error("Error fetching orders:", error);
           setOrders([]);
